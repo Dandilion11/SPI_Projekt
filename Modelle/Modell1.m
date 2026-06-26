@@ -1,3 +1,7 @@
+% DGL einfachem Modell (Aufgabe 2a) ohne Inputs.
+% kinetic 1 für Moser/Blachmann, Kinetic 2 für exponential und Kinetic 3
+% für Monod
+
 function dxdt = Modell1(t, x, p, kinetic)
 
 x = max(x, 0);
@@ -15,11 +19,11 @@ YXO   = p(4);  % Ertragskoeffizient Biomasse/O2
 KLa   = p(5);  % Aus Enfors Gl. 6.6 Volumetrischer Sauerstofftransferkoeffizient [1/h]
 cO2stern = p(6);  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
 
-%% Wachstumsrate (Monod)
-if kinetic == "Moser_Blachmann"
+%% Wachstumsrate
+if kinetic == 1
     n  = p(7);
     mu = mumax * (cGlc^n / (cGlc^n + KS));
-elseif kinetic == "exponential"
+elseif kinetic == 2
     mu = mumax * (1 - exp(-cGlc / KS));
 else
     mu = mumax * cGlc / (KS + cGlc);
@@ -30,7 +34,7 @@ dxdt = zeros(3, 1);
 
 dxdt(1) =  mu * cX;                                 % Biomasse
 dxdt(2) = -1/YXS * mu * cX;                         % Glucose
-dxdt(3) =  KLa(cO2stern-cO2) - 1/YXO * mu * cX;  % O2-Eintrag - O2-Verbrauch (Enfors Gl. 6.15) -> O2 Eintrag durch den Rührer, O2 Verbrauch durch das Wachstum der Biomasse 
+dxdt(3) =  KLa * (cO2stern-cO2) - 1/YXO * mu * cX;  % O2-Eintrag - O2-Verbrauch (Enfors Gl. 6.15) -> O2 Eintrag durch den Rührer, O2 Verbrauch durch das Wachstum der Biomasse 
  
 % in Enfors: d(DOT)/dt = KLa * (DOT* - DOT) - r0*H  (Gl. 6.15)
 % -> DOT = C * 100 kH / pO2,cal                     (Gl. 6.14 (umgestellt))
