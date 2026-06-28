@@ -30,8 +30,11 @@ x0     = [m_X0; m_Glc0];
 % p = [mu_max (1/h), K_Glc (g/L), Y_Glc_X (g/g)]
 p_guess = [0.3, 0.5, 0.15]; 
 
-% Modell-Auswahl: 1 = Monod, 2 = Tessier, 3 = Moser
-model_type = 1; 
+%% Modell-Auswahl: 1 = Monod, 2 = Tessier, 3 = Moser
+model_type = 1;
+
+%% Auswahl ob das Modell Sauerstoff mit einbeziehen soll oder nicht
+withOxygen = false; 
 
 %% 3. Simulation durchführen (Forward Problem)
 % Zeitvektor für eine glatte Kurve (0 bis 20 Stunden, 200 Punkte)
@@ -43,7 +46,7 @@ options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
 % Aufruf des ODE-Lösers
 % Hinweis: ode_task2a_batch MUSS im Ordner /models/ liegen und der Pfad 
 % muss in MATLAB bekannt sein (z.B. durch setup_project.m).
-[~, X_sim] = ode15s(@(t, x) ode_task2a_batch(t, x, p_guess, model_type, V), t_sim, x0, options);
+[~, X_sim] = ode15s(@(t, x) Modell1(t, x, p_guess, model_type, withOxygen), t_sim, x0, options);
 
 %% 4. Post-Processing (Rückrechnung auf Konzentration)
 % Die ODE rechnet mit absoluten Massen (g). Für den Plot müssen wir 
