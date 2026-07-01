@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 %% 1. Configuration
-experiment_nummer = 4; % Change this integer to load different experiments (e.g., 3, 4)
+experiment_nummer = 3; % Change this integer to load different experiments (e.g., 3, 4)
 
 % Error model parameters (Krämer & King 2017)
 a_bio = 0.02; b_bio = 0.015;
@@ -32,11 +32,11 @@ sigma_glc = a_glc .* y_glc + b_glc;
 
 % Input Data (u Matrix - L/h)
 t_u    = Mess.u(1, :);
-u_Am   = Mess.u(2, :);
-u_Ph   = Mess.u(4, :);
-u_Glc  = Mess.u(6, :);
-u_Acid = Mess.u(9, :);
-u_Base = Mess.u(10, :);
+u_Ph  = Mess.u(2, :);  
+u_Am   = Mess.u(4, :);  % Ammonium is row 4
+u_Glc  = Mess.u(6, :);  
+u_Acid = Mess.u(9, :);  % Assuming Acid remains row 9
+u_Base = Mess.u(10, :); % Base is row 10
 
 %% 4. Plotting (Updated for Dark Themes)
 figure('Name', sprintf('Experiment %02d Data', experiment_nummer), 'Position', [100, 100, 1000, 800]);
