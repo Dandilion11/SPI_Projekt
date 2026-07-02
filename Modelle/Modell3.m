@@ -29,6 +29,13 @@ tu  = u(1,:);
 
 idx = find(t >= tu, 1, 'last');  % aktueller Index
 
+%{
+?
+qAm = u(2, idx);   % Ammonium-Feedrate [L/h]
+qPh = u(4, idx);   % Phosphat-Feedrate [L/h]
+qC  = u(6, idx);   % C-Feedrate [L/h]
+%}
+
 qC  = u(2, idx);   % C-Feedrate [L/h]
 qAm = u(4, idx);   % Ammonium-Feedrate [L/h]
 qPh = u(6, idx);   % Phosphat-Feedrate [L/h]
