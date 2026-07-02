@@ -4,6 +4,11 @@ clear; clc; close all;
 %% 1. Load Preprocessed Data
 scriptDir = fileparts(mfilename('fullpath'));
 loadPath = fullfile(scriptDir, '..', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
+projectRoot = fileparts(fileparts(mfilename('fullpath')));
+addpath(fullfile(projectRoot,'Modelle'),'-begin');
+
+rehash;
+clear Modell1
 
 if ~isfile(loadPath)
     error('Data not found.');
@@ -46,6 +51,8 @@ plot(t_sim, c_X_sim, 'c-', 'LineWidth', 2);
 title('Biomass');
 ylabel('c_X (g/L)');
 set(gca, 'Color', [0.15 0.15 0.15], 'XColor', 'w', 'YColor', 'w');
+lgd = legend("Messung", "Simulation" );
+lgd.TextColor = 'w';
 grid on;
 
 subplot(2, 1, 2);
@@ -55,6 +62,8 @@ title('Glucose');
 xlabel('BatchAge (h)');
 ylabel('c_{Glc} (g/L)');
 set(gca, 'Color', [0.15 0.15 0.15], 'XColor', 'w', 'YColor', 'w');
+lgd = legend("Messung", "Simulation" );
+lgd.TextColor = 'w';
 grid on;
 
 set(gcf, 'Color', [0.2 0.2 0.2]);

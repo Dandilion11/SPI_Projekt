@@ -21,7 +21,9 @@ var_glc = TrainData.Glucose.var;
 
 
 %% 1. Load Preprocessed Data
-load('Processed_Batch_Data.mat');
+projectRoot = fileparts(fileparts(mfilename('fullpath')));
+load(fullfile(projectRoot,'Daten/Daten_Processed/Processed_Batch_Data.mat'));
+addpath(fullfile(projectRoot,'Modelle'),'-begin');
 
 % SWAPPED: Using ValData (Experiment 04) for training
 t_messung = ValData.Biomasse.t;
@@ -57,6 +59,11 @@ fprintf('Final WLS Error: %.4f\n', fval);
 fprintf('mumax  = %.4f h^-1\n', p_opt(1));
 fprintf('KS     = %.4f g/L\n', p_opt(2));
 fprintf('YXS    = %.4f g/g\n', p_opt(3));
+
+scriptDir = fileparts(mfilename('fullpath'));
+saveDir = fullfile(scriptDir, '..', 'Daten');
+savePath = fullfile(saveDir, 'p_opt.mat');
+save(savePath,"p_opt");
 
 %% 7. Visual Validation
 t_sim = linspace(0, 20, 200);

@@ -16,7 +16,7 @@ end
 %% Parameter
 mumax = p(1); % max spezifische Wachstumsrate (maximum specific growth rate (Doran, P. M. (2013). Bioprocess Engineering Principles. S. 279))
 KS    = p(2); % Halbsättigungskonstante(substrate constant (Doran, P. M. (2013). Bioprocess Engineering Principles. S. 279))
-YXS   = p(3); % Ertragskoeffizient Biomasse/Glucose (biomass yield (Doran, P. M. (2013). Bioprocess Engineering Principles, Gl. 4.11))  
+YXS   = p(3); % Ertragskoeffizient Biomasse/Glucose (biomass yield (Doran, P. M. (2013). Bioprocess Engineering Principles, Gl. 4.11)) 
 if withOxygen == true
     YXO   = p(4);  % Ertragskoeffizient Biomasse/O2
     KLa   = p(5);  % Aus Enfors Gl. 6.6 Volumetrischer Sauerstofftransferkoeffizient [1/h]
