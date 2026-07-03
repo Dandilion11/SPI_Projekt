@@ -1,1 +1,0 @@
-%Executes the STRIKE-GOLDD toolbox for structural observability and identifiability (Task 3)
