@@ -9,7 +9,8 @@ a_bio = 0.02; b_bio = 0.015;
 a_glc = 0.06; b_glc = 0.25;
 
 %% 2. Data Loading
-scriptDir = fileparts(mfilename('fullpath'));
+%scriptDir = fileparts(mfilename('fullpath'));
+scriptDir = pwd;
 dateiname = sprintf('Mess_RamScDef%02d.mat', experiment_nummer);
 pfad = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', dateiname);
 

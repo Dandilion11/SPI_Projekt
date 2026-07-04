@@ -1,15 +1,23 @@
 function dxdt = Modell2(t,x,p, kinetic)
-% Erweiterung des Modells 1 um eine base consumption:
-% für ph regulation eines säure-produzierenden Prozesses
+% Erweiterung des Modells 1 um eine Base-Consumption (pH-Regelung eines
+% saeure-/ammonium-zehrenden Prozesses) sowie eine Sauerstoffbilanz.
 %% Grenzen der Zustände
 
 x = max(x,0);
 
-%% Zustände
 
-cX   = x(1);  % Biomasse          (CDW)
-cGlc   = x(2);  % Glucose
-cO2  = x(3);  % gelöster Sauerstoff [g/L]
+%% Zustaende
+cX    = x(1);  % Biomasse             [g/L] (CDW)
+cGlc  = x(2);  % Glucose              [g/L]
+cAm   = x(3);  % Ammonium             [g/L]
+cBase = x(4);  % zugegebene Base      [mol/L bzw. L-Aequivalent]
+cO2   = x(5);  % geloester Sauerstoff [g/L]   (FIX: vorher faelschlich x(3))
+
+% %% Zustände ALT
+% 
+% cX   = x(1);  % Biomasse          (CDW)
+% cGlc   = x(2);  % Glucose
+% cO2  = x(3);  % gelöster Sauerstoff [g/L]
 %% Parameter
 
 mumax = p(1);       % max spezifische Wachstumsrate (maximum specific growth rate (Doran, P. M. (2013). Bioprocess Engineering Principles. S. 279))
@@ -31,13 +39,22 @@ else
     mu = mumax * cGlc / (KS + cGlc);
 end
 
-%% DGL
 
+%% DGL
 dxdt = zeros(5, 1);
-dxdt(1) = mu * cX; % Biomasse
-dxdt(2) = - (1 / YXS) * mu * cX; % Glucose
-dxdt(3) = - YAmX * mu * cX; % Ammonium
-dxdt(4) = YBam * YAmX * mu * cX; %Base
-dxdt(5) =  KLa * (cO2stern-cO2) - 1/YXO * mu * cX;  % O2-Eintrag - O2-Verbrauch (Enfors Gl. 6.15) -> O2 Eintrag durch den Rührer, O2 Verbrauch durch das Wachstum der Biomasse 
+dxdt(1) =  mu * cX;                                 % Biomasse
+dxdt(2) = -(1 / YXS) * mu * cX;                     % Glucose
+dxdt(3) = -YAmX * mu * cX;                          % Ammonium
+dxdt(4) =  YBam * YAmX * mu * cX;                   % Base
+dxdt(5) =  KLa * (cO2stern - cO2) - 1/YXO * mu * cX; % O2 (nutzt jetzt cO2 = x(5))
+
+% %% DGL ALT -> hat sich eigentlich nichts geändert
+% 
+% dxdt = zeros(5, 1);
+% dxdt(1) = mu * cX; % Biomasse
+% dxdt(2) = - (1 / YXS) * mu * cX; % Glucose
+% dxdt(3) = - YAmX * mu * cX; % Ammonium
+% dxdt(4) = YBam * YAmX * mu * cX; %Base
+% dxdt(5) =  KLa * (cO2stern-cO2) - 1/YXO * mu * cX;  % O2-Eintrag - O2-Verbrauch (Enfors Gl. 6.15) -> O2 Eintrag durch den Rührer, O2 Verbrauch durch das Wachstum der Biomasse 
 
 end
