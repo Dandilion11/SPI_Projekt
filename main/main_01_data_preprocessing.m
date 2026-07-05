@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 % 1. Pfade definieren (dynamisch oder relativ anpassen)
-scriptDir = fileparts(mfilename('fullpath'));
+scriptDir = pwd;
 pfad_03 = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef03.mat');
 pfad_04 = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef04.mat');
 

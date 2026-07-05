@@ -2,10 +2,10 @@
 clear; clc; close all;
 
 %% 1. Load Preprocessed Data
-scriptDir = fileparts(mfilename('fullpath'));
+scriptDir = pwd;
 loadPath = fullfile(scriptDir, '..', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
-projectRoot = fileparts(fileparts(mfilename('fullpath')));
-addpath(fullfile(projectRoot,'Modelle'),'-begin');
+projectRoot = pwd;
+addpath(fullfile(projectRoot, '..','Modelle'),'-begin');
 
 rehash;
 clear Modell1
