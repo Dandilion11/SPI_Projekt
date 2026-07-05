@@ -1,5 +1,7 @@
 function dxdt = Modell3(t, x, u, p, kinetic)
 % Modell 3: Fed-Batch MIT Ethanol (Krämer & King 2017, Gl. 7–15)
+% Sauerstoff nicht als Zustand, weil der Konstant auf >=50% gehalten wird,
+% durch den Rührer
 %
 % Zustände (Massen [g] + Volumen [L]):
 %   x(1) = mX    Biomasse
@@ -8,7 +10,8 @@ function dxdt = Modell3(t, x, u, p, kinetic)
 %   x(4) = mPO4  Phosphat
 %   x(5) = mEt   Ethanol    
 %   x(6) = mB    kumulierte Base [mL]
-%   x(7) = V     Volumen [L]
+%   x(7) = cO2   DOT (Sauerstoffkonzentration) [%]
+%   x(8) = V     Volumen [L]
 %
 % Parameter p:
 %   p(1)  mumax      max. Wachstumsrate auf Glucose [1/h]
@@ -33,7 +36,9 @@ mGlc = x(2);
 mNH4 = x(3);
 mPO4 = x(4);
 mEt  = x(5);
-V    = x(6);
+mB   = x(6);
+cO2  = x(7);
+V    = x(8);
 
 %% Parameter
 mumax     = p(1);
@@ -94,7 +99,7 @@ qBase = u(10, idx);   % Base-Feedrate [L/h]
 uout = 0;
 
 %% Massenbilanzen (Krämer & King 2017, Gl. 7–15)
-dxdt = zeros(7, 1);
+dxdt = zeros(8, 1);
 
 % Biomasse (Gl. 7): Wachstum auf Glc + Wachstum auf EtOH
 dxdt(1) = (rX + rEt_X) * mX;
@@ -116,8 +121,11 @@ dxdt(5) = (rEt_P - YEt_X * rEt_X) * mX - uout * cEt;
 % Kumulierte Base (Gl. 13)
 dxdt(6) = YB_NH4 * YNH4X * (rX + rEt_X) * mX;
 
+dxdt(7) = KLa * (cO2stern - cO2) ...
+        - (1/YXO) * (rX + rEt_X) * (mX/V);
+
 % Volumen (Gl. 15)
-dxdt(7) = qGlc + qAm + qPh + qBase + qAcid - uout;   
+dxdt(8) = qGlc + qAm + qPh + qBase + qAcid - uout;   
 
 end
 
