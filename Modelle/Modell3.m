@@ -10,8 +10,7 @@ function dxdt = Modell3(t, x, u, p, kinetic)
 %   x(4) = mPO4  Phosphat
 %   x(5) = mEt   Ethanol    
 %   x(6) = mB    kumulierte Base [mL]
-%   x(7) = cO2   DOT (Sauerstoffkonzentration) [%]
-%   x(8) = V     Volumen [L]
+%   x(7) = V     Volumen [L]
 %
 % Parameter p:
 %   p(1)  mumax      max. Wachstumsrate auf Glucose [1/h]
@@ -37,8 +36,7 @@ mNH4 = x(3);
 mPO4 = x(4);
 mEt  = x(5);
 mB   = x(6);
-cO2  = x(7);
-V    = x(8);
+V    = x(7);
 
 %% Parameter
 mumax     = p(1);
