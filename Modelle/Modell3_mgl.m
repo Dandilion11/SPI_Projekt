@@ -9,5 +9,7 @@ y = [x(1)/V;   % cX   [g/L]
      x(3)/V;   % cNH4 [g/L]
      x(4)/V;   % cPO4 [g/L]
      x(5)/V;   % cEt  [g/L]
-     x(6)];    % mB   [mL]
+     x(6);    % mB   [mL]
+     x(7);];   % Volumen
+
 end

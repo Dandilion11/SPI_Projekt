@@ -33,11 +33,11 @@ sigma_glc = a_glc .* y_glc + b_glc;
 
 % Input Data (u Matrix - L/h)
 t_u    = Mess.u(1, :);
-u_Ph  = Mess.u(2, :);  
-u_Am   = Mess.u(4, :);  % Ammonium is row 4
+u_Am  = Mess.u(2, :);  
+u_Ph   = Mess.u(4, :); 
 u_Glc  = Mess.u(6, :);  
-u_Acid = Mess.u(9, :);  % Assuming Acid remains row 9
-u_Base = Mess.u(10, :); % Base is row 10
+u_Acid = Mess.u(9, :);  
+u_Base = Mess.u(10, :);
 
 %% 4. Plotting (Updated for Dark Themes)
 figure('Name', sprintf('Experiment %02d Data', experiment_nummer), 'Position', [100, 100, 1000, 800]);
