@@ -1,4 +1,3 @@
-
 % main_04_parameter_fitting.m
 clear; clc; close all;
 %{
@@ -26,87 +25,334 @@ load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat')
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 
 % SWAPPED: Using ValData (Experiment 04) for training
-t_messung = ValData.Biomasse.t;
-y_bio = ValData.Biomasse.y;
-y_glc = ValData.Glucose.y;
-var_bio = ValData.Biomasse.var;
-var_glc = ValData.Glucose.var;
+Data = ValData;
+t_bio = Data.Biomasse.t;
+y_bio = Data.Biomasse.y;
+t_glc = Data.Glucose.t;
+y_glc = Data.Glucose.y;
+var_bio = Data.Biomasse.var;
+var_glc = Data.Glucose.var;
 
-%% 2. System Constants & Initial Conditions
+%% --------------------------------------------------------------------------
+%% MODELL 1 
+%% --------------------------------------------------------------------------
+
+%% 2. MODELL1 Modellkofiguration und Anfangswerte
 % Modell1 expects concentrations (g/L), volume V is removed.
+% Anfangswerte aus der jeweils ersten Messung.
 x0 = [y_bio(1); y_glc(1)];
 
-%% 3. Optimization Setup
-% Parameter vector: [mumax, KS, YXS]
-p0 = [0.3, 0.5, 0.15]; 
-lb = [0.01, 0.01, 0.01]; 
-ub = [1.0, 5.0, 1.0]; %KS upper bound
-
-% Flags for Modell1
-kinetic = 3; % 3 = Monod
+% Modell-Konfiguration
+kinetic    = 3;      % 3 = Monod
+%--------------------------------------------------------------------------
 withOxygen = false;
+%--------------------------------------------------------------------------
+% Parametervektor [mu_max; K_S; Y_XS]
+p0  = [0.3;  0.5;  0.15];    % Startwerte
+pLB = [0.01; 0.01; 0.01];    % untere Schranken
+pUB = [1.0;  5.0;  1.0];     % obere Schranken (K_S oben gelockert)
 
-%% 4. Define Objective Function
-obj_fun = @(p) calculate_wls_error(p, x0, t_messung, y_bio, y_glc, var_bio, var_glc, kinetic, withOxygen);
+if withOxygen
+    % Sauerstoffmessung (DOT)
+    t_o2 = Data.O2.t;  
+    y_o2 = Data.O2.y;  
+    var_o2 = Data.O2.var;
 
-%% 5. Execute Optimization
+    % 3. Zustand ergaenzen: cO2 (Start-DOT aus O2-Messung zu Batch-Beginn)
+    x0 = [x0; y_o2(1)];
+
+    % Satrtwerte [Y_XO; KLa; cO2*]
+    %   Y_XO = Ertragskoeffizient Biomasse/O2
+    %   KLa  = volumetrischer O2-Transferkoeffizient [1/h]
+    %   cO2* = Saettigungs-DOT (Gleichgewicht mit Gasphase) [%]
+    p0  = [p0;  1.0; 200; 100];
+    pLB = [pLB; 0.01;   1;  50];
+    pUB = [pUB; 5.0; 1000; 150];
+end
+
+%% 3. MODELL1 Parameteridentifikation (WLS) -> uebung5.m / guete_pi_WLS.m
+
+% Guetefunktion (Weighted Least Squares)
+obj_fun = @(p) calculate_wls_error(p, x0, Data, kinetic, withOxygen);
+
+% Durchfuehrung der Optimierung mit fmincon
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp');
-[p_opt, fval] = fmincon(obj_fun, p0, [], [], [], [], lb, ub, [], options);
+[p_opt, fval] = fmincon(obj_fun, p0, [], [], [], [], pLB, pUB, [], options);
 
-%% 6. Output Results
-fprintf('\n--- Optimization Complete ---\n');
-fprintf('Final WLS Error: %.4f\n', fval);
-fprintf('mumax  = %.4f h^-1\n', p_opt(1));
-fprintf('KS     = %.4f g/L\n', p_opt(2));
-fprintf('YXS    = %.4f g/g\n', p_opt(3));
+%% 4. MODELL1 Ausgabe und Speichern der Identifikationsergebnisse
+fprintf('\n--- Parameteridentifikation abgeschlossen ---\n');
+fprintf('Finaler WLS-Fehler: %.4f\n', fval);
+fprintf('mu_max = %.4f 1/h\n', p_opt(1));
+fprintf('K_S    = %.4f g/L\n', p_opt(2));
+fprintf('Y_XS   = %.4f g/g\n', p_opt(3));
+if withOxygen
+    fprintf('Y_XO   = %.4f g/g\n', p_opt(4));
+    fprintf('KLa    = %.4f 1/h\n', p_opt(5));
+    fprintf('cO2*   = %.4f %%\n',  p_opt(6));
+end
 
+% Speichern der optimierten Parameter -> für main05
 scriptDir = pwd;
 saveDir = fullfile(scriptDir, '..', 'Daten');
 savePath = fullfile(saveDir, 'p_opt.mat');
 save(savePath,"p_opt");
+%% 5. MODELL1 Visualisierung
+% Simulation nur so lange laufen lassen, wie Batch-Daten vorhanden sind:
+t_end       = max([t_bio(:)+1; t_glc(:)+1]);
+t_sim       = linspace(0, t_end, 200);
+options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
 
-%% 7. Visual Validation
-t_sim = linspace(0, 20, 200);
-options_ode = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
-[~, X_opt] = ode15s(@(t, x) Modell1(t, x, p_opt, kinetic, withOxygen), t_sim, x0, options_ode);
+[~, X_sim] = ode45(@(t, x) Modell1(t, x, p_opt, kinetic, withOxygen), t_sim, x0, options_ode);
 
-c_X_sim   = X_opt(:, 1);
-c_Glc_sim = X_opt(:, 2);
+c_X_sim   = X_sim(:, 1);
+c_Glc_sim = X_sim(:, 2);
+if withOxygen
+    cO2_sim = X_sim(:, 3);
+end
 
-figure('Name', 'Task 2a: Parameter Identification (Modell1)', 'Position', [150, 150, 900, 600]);
+figure('Name', 'Task 4: Parameter Identification (Modell1)', 'Position', [200, 200, 900, 600]);
+if withOxygen
+    nRows = 3;
+else
+    nRows = 2;
+end
 
-subplot(2, 1, 1);
-errorbar(t_messung, y_bio, sqrt(var_bio), 'wo', 'MarkerFaceColor', 'w', 'MarkerSize', 6); hold on;
-plot(t_sim, c_X_sim, 'c-', 'LineWidth', 2.5);
-title(sprintf('Biomass Fit (Error: %.1f)', fval), 'Color', 'w');
-ylabel('c_X (g/L)', 'Color', 'w');
-set(gca, 'Color', [0.15 0.15 0.15], 'XColor', 'w', 'YColor', 'w');
-legend('Experimental Data \pm \sigma', 'Optimized Model', 'TextColor', 'w');
+subplot(nRows, 1, 1);
+% Messung mit Fehlerbalken -> +/- 1 Standardabweichung aus der Messvarianz
+errorbar(t_bio, y_bio, sqrt(var_bio), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim, c_X_sim, 'LineWidth', 2);
+title('Biomass');
+ylabel('c_X (g/L)');
+legend("Messung \pm \sigma", "Simulation", Location="southeast");
+xlim([0 9.5])
 grid on;
 
-subplot(2, 1, 2);
-errorbar(t_messung, y_glc, sqrt(var_glc), 'wo', 'MarkerFaceColor', 'w', 'MarkerSize', 6); hold on;
-plot(t_sim, c_Glc_sim, 'y-', 'LineWidth', 2.5);
-title('Glucose Fit', 'Color', 'w');
-xlabel('BatchAge (h)', 'Color', 'w');
-ylabel('c_{Glc} (g/L)', 'Color', 'w');
-set(gca, 'Color', [0.15 0.15 0.15], 'XColor', 'w', 'YColor', 'w');
-legend('Experimental Data \pm \sigma', 'Optimized Model', 'TextColor', 'w');
+subplot(nRows, 1, 2);
+errorbar(t_glc, y_glc, sqrt(var_glc), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim, c_Glc_sim, 'LineWidth', 2);
+title('Glucose');
+
+ylabel('c_{Glc} (g/L)');
+legend("Messung \pm \sigma", "Simulation", Location="northeast");
+xlim([0 9.5])
 grid on;
 
-%% Local Objective Function
-function J = calculate_wls_error(p, x0, t_mes, y_bio, y_glc, var_bio, var_glc, kinetic, withOxygen)
-    % Force ode15s to evaluate exactly at measurement timestamps
-    try
-        [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen), t_mes, x0);
-        c_X_sim = X_sim(:,1);
-        c_Glc_sim = X_sim(:,2);
-        
-        err_bio = sum(((y_bio - c_X_sim).^2) ./ var_bio);
-        err_glc = sum(((y_glc - c_Glc_sim).^2) ./ var_glc);
-        
-        J = err_bio + err_glc;
-    catch
-        J = 1e6; % Penalty for integration failure
+if withOxygen
+    subplot(nRows, 1, 3);
+    errorbar(t_o2, y_o2, sqrt(var_o2), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+    plot(t_sim, cO2_sim, 'LineWidth', 2);
+    title('Sauerstoff (DOT)');
+    ylabel('cO_2 (%)');
+    legend("Messung \pm \sigma", "Simulation");
+    xlim([0 9.5])
+    grid on;
+end
+xlabel('BatchAge (h)');
+
+
+%% --------------------------------------------------------------------------
+%% MODELL 2
+%% --------------------------------------------------------------------------
+% Zusaetzliche Messgroessen fuer Modell2
+t_am = Data.Ammonium.t;  y_am = Data.Ammonium.y;  var_am = Data.Ammonium.var;
+t_ba = Data.Base.t;      y_ba = Data.Base.y;      var_ba = Data.Base.var;
+t_o2 = Data.O2.t;        y_o2 = Data.O2.y;        var_o2 = Data.O2.var;
+
+
+%% 1. Anfangswerte und Parameter
+% Zustaende: [cX; cGlc; cAm; cBase; cO2]
+x0_m2 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
+
+% Parameter: [mu_max; K_S; Y_XS; Y_Bam; Y_AmX; Y_XO; KLa; cO2*]
+p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  1.0; 200; 100];
+pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;   1;  50];
+pUB_m2 = [1.0;  5.0;  1.0;  10;   1.0;   5.0; 1000; 150];
+
+% Modell-Konfiguration
+kinetic    = 3;      % 3 = Monod
+
+%% 2. Parameteridentifikation (WLS)
+obj_fun_m2 = @(p) calculate_wls_error_m2(p, x0_m2, Data, kinetic);
+
+options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp');
+[p_opt_m2, fval_m2] = fmincon(obj_fun_m2, p0_m2, [], [], [], [], pLB_m2, pUB_m2, [], options);
+
+
+%% 3. Ausgabe und Speichern
+fprintf('\n--- Modell2: Parameteridentifikation abgeschlossen ---\n');
+fprintf('Finaler WLS-Fehler: %.4f\n', fval_m2);
+fprintf('mu_max = %.4f 1/h\n',  p_opt_m2(1));
+fprintf('K_S    = %.4f g/L\n',  p_opt_m2(2));
+fprintf('Y_XS   = %.4f g/g\n',  p_opt_m2(3));
+fprintf('Y_Bam  = %.4f\n',      p_opt_m2(4));
+fprintf('Y_AmX  = %.4f\n',      p_opt_m2(5));
+fprintf('Y_XO   = %.4f g/g\n',  p_opt_m2(6));
+fprintf('KLa    = %.4f 1/h\n',  p_opt_m2(7));
+fprintf('cO2*   = %.4f %%\n',   p_opt_m2(8));
+
+% Speichern von Modell2
+scriptDir = pwd;
+saveDir = fullfile(scriptDir, '..', 'Daten');
+save(fullfile(saveDir, 'p_opt_Modell2.mat'), 'p_opt_m2');
+
+%% 4. Visualisierung Modell 2
+t_end_m2 = max([t_bio(:)+1; t_glc(:)+1; t_am(:)+1; t_ba(:)+1; t_o2(:)+1]);
+t_sim_m2 = linspace(0, t_end_m2, 300);
+
+options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
+[~, X2] = ode15s(@(t, x) Modell2(t, x, p_opt_m2, kinetic), t_sim_m2, x0_m2, options_ode);
+
+figure('Name', 'Task 4: Parameter Identification (Modell2: +Base +O2)', 'Position', [250, 80, 950, 950]);
+
+subplot(5, 1, 1);
+errorbar(t_bio, y_bio, sqrt(var_bio), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim_m2, X2(:, 1), 'LineWidth', 2);
+title('Modell2 - Biomasse');
+ylabel('c_X (g/L)');
+legend("Messung \pm \sigma", "Simulation");
+xlim([0 10])
+grid on;
+
+subplot(5, 1, 2);
+errorbar(t_glc, y_glc, sqrt(var_glc), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim_m2, X2(:, 2), 'LineWidth', 2);
+title('Modell2 - Glucose');
+ylabel('c_{Glc} (g/L)');
+legend("Messung \pm \sigma", "Simulation");
+xlim([0 10])
+grid on;
+
+subplot(5, 1, 3);
+errorbar(t_am, y_am, sqrt(var_am), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim_m2, X2(:, 3), 'LineWidth', 2);
+title('Modell2 - Ammonium');
+ylabel('c_{Am} (g/L)');
+legend("Messung \pm \sigma", "Simulation");
+xlim([0 10])
+grid on;
+
+subplot(5, 1, 4);
+errorbar(t_ba, y_ba, sqrt(var_ba), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim_m2, X2(:, 4), 'LineWidth', 2);
+title('Modell2 - Base');
+ylabel('c_{Base}');
+legend("Messung \pm \sigma", "Simulation");
+xlim([0 10])
+grid on;
+
+subplot(5, 1, 5);
+errorbar(t_o2, y_o2, sqrt(var_o2), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
+plot(t_sim_m2, X2(:, 5), 'LineWidth', 2);
+title('Modell2 - Sauerstoff (DOT)');
+xlabel('BatchAge (h)');
+ylabel('cO_2 (%)');
+legend("Messung \pm \sigma", "Simulation");
+xlim([0 10])
+grid on;
+
+
+
+
+%% Local Objective Function -> guete_pi_WLS (WLS)
+
+% function J = calculate_wls_error(p, x0, t_mes, y_bio, y_glc, var_bio, var_glc, kinetic, withOxygen)
+%     % Erzwingt Auswertung von ode15s exakt an den Messzeitpunkten.
+%     try
+%         [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen), t_mes, x0);
+%         c_X_sim   = X_sim(:, 1);
+%         c_Glc_sim = X_sim(:, 2);
+% 
+%         % Sicherstellen, dass alle Groessen Spaltenvektoren sind
+%         y_bio = y_bio(:); y_glc = y_glc(:);
+%         var_bio = var_bio(:); var_glc = var_glc(:);
+% 
+%         err_bio = sum(((y_bio - c_X_sim).^2) ./ var_bio);
+%         err_glc = sum(((y_glc - c_Glc_sim).^2) ./ var_glc);
+% 
+%         J = err_bio + err_glc;
+%     catch
+%         J = 1e6;   % Strafterm bei Integrationsfehler
+%     end
+% end
+%% Local Objective Function -> guete_pi_WLS (WLS) -- GEGENCHECKEN!
+% Hinweis: Die O2-Messung (DOT) hat einen viel feineren Zeitvektor als die
+% Offline-Groessen Biomasse/Glucose. Die Guetefunktion simuliert daher
+% einmalig ueber das vereinigte Zeitraster aller Messungen und ordnet die
+% Simulationswerte anschliessend den jeweiligen Messzeitpunkten zu.
+
+function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
+    % Messgroessen (jede Groesse mit eigenem Zeitvektor)
+    t_bio = Data.Biomasse.t(:); y_bio = Data.Biomasse.y(:); var_bio = Data.Biomasse.var(:);
+    t_glc = Data.Glucose.t(:);  y_glc = Data.Glucose.y(:);  var_glc = Data.Glucose.var(:);
+
+    if withOxygen
+        t_o2 = Data.O2.t(:); y_o2 = Data.O2.y(:); var_o2 = Data.O2.var(:);
+        t_all = unique([t_bio; t_glc; t_o2]);   % vereinigtes Zeitraster
+    else
+        t_all = unique([t_bio; t_glc]);
     end
+
+    % Einmalige Simulation ueber das vereinigte Zeitraster.
+    % (ode15s liefert bei >= 3 Zeitpunkten die Loesung exakt an diesen Punkten.)
+    options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
+    try
+        [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen), t_all, x0, options);
+    catch
+        J = 1e6; return;   % Strafterm bei Integrationsfehler
+    end
+
+    % Simulationswerte den jeweiligen Messzeitpunkten zuordnen
+    [~, iBio] = ismember(t_bio, t_all);
+    [~, iGlc] = ismember(t_glc, t_all);
+
+    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
+    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
+    J = err_bio + err_glc;
+
+    if withOxygen
+        [~, iO2] = ismember(t_o2, t_all);
+        err_o2 = sum(((y_o2 - X_sim(iO2, 3)).^2) ./ var_o2);
+        J = J + err_o2;
+    end
+
+    if ~isfinite(J); J = 1e6; end
+end
+
+
+function J = calculate_wls_error_m2(p, x0, Data, kinetic)
+    % Modell2: Biomasse, Glucose, Ammonium, Base, O2.
+    t_bio = Data.Biomasse.t(:); y_bio = Data.Biomasse.y(:); var_bio = Data.Biomasse.var(:);
+    t_glc = Data.Glucose.t(:);  y_glc = Data.Glucose.y(:);  var_glc = Data.Glucose.var(:);
+    t_am  = Data.Ammonium.t(:); y_am  = Data.Ammonium.y(:); var_am  = Data.Ammonium.var(:);
+    t_ba  = Data.Base.t(:);     y_ba  = Data.Base.y(:);     var_ba  = Data.Base.var(:);
+    t_o2  = Data.O2.t(:);       y_o2  = Data.O2.y(:);       var_o2  = Data.O2.var(:);
+
+    t_all = unique([t_bio; t_glc; t_am; t_ba; t_o2]);   % vereinigtes Zeitraster
+
+    % Einmalige Simulation ueber das vereinigte Zeitraster.
+    options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
+    try
+        [~, X_sim] = ode15s(@(t, x) Modell2(t, x, p, kinetic), t_all, x0, options);
+    catch
+        J = 1e6; return;
+    end
+    if size(X_sim, 1) ~= numel(t_all)
+        J = 1e6; return;
+    end
+
+    % Simulationswerte den jeweiligen Messzeitpunkten zuordnen
+    [~, iBio] = ismember(t_bio, t_all);
+    [~, iGlc] = ismember(t_glc, t_all);
+    [~, iAm]  = ismember(t_am,  t_all);
+    [~, iBa]  = ismember(t_ba,  t_all);
+    [~, iO2]  = ismember(t_o2,  t_all);
+
+    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
+    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
+    err_am  = sum(((y_am  - X_sim(iAm,  3)).^2) ./ var_am);
+    err_ba  = sum(((y_ba  - X_sim(iBa,  4)).^2) ./ var_ba);
+    err_o2  = sum(((y_o2  - X_sim(iO2,  5)).^2) ./ var_o2);
+    J = err_bio + err_glc + err_am + err_ba + err_o2;
+
+    if ~isfinite(J); J = 1e6; end
 end

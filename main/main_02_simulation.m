@@ -142,7 +142,7 @@ t_sim_m2 = linspace(0, t_end_m2, 300);
 figure('Name','Simulation Test (Modell2: +Base +O2)','Position',[250 80 950 950]);
 
 subplot(5,1,1);
-errorbar(Data.Biomasse.t, Data.Biomasse.y, sqrt(Data.Biomasse.var)); hold on;
+errorbar(Data.Biomasse.t, Data.Biomasse.y, sqrt(Data.Biomasse.var), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
 plot(t_sim_m2, X2(:,1), 'LineWidth', 2);
 title('Modell2 - Biomasse'); 
 ylabel('c_X (g/L)'); 
@@ -151,7 +151,7 @@ xlim([0 10])
 grid on;
 
 subplot(5,1,2);
-errorbar(Data.Glucose.t, Data.Glucose.y, sqrt(Data.Glucose.var)); hold on;
+errorbar(Data.Glucose.t, Data.Glucose.y, sqrt(Data.Glucose.var), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
 plot(t_sim_m2, X2(:,2), 'LineWidth', 2);
 title('Modell2 - Glucose'); 
 ylabel('c_{Glc} (g/L)');  
@@ -160,7 +160,7 @@ legend("Messung \pm \sigma","Simulation");
 grid on;
 
 subplot(5,1,3);
-errorbar(Data.Ammonium.t, Data.Ammonium.y, sqrt(Data.Ammonium.var)); hold on;
+errorbar(Data.Ammonium.t, Data.Ammonium.y, sqrt(Data.Ammonium.var), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
 plot(t_sim_m2, X2(:,3), 'LineWidth', 2);
 title('Modell2 - Ammonium'); 
 ylabel('c_{Am} (g/L)'); 
@@ -169,7 +169,7 @@ legend("Messung \pm \sigma","Simulation");
 grid on;
 
 subplot(5,1,4);
-errorbar(Data.Base.t, Data.Base.y, sqrt(Data.Base.var)); hold on;
+errorbar(Data.Base.t, Data.Base.y, sqrt(Data.Base.var), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
 plot(t_sim_m2, X2(:,4), 'LineWidth', 2);
 title('Modell2 - Base'); 
 ylabel('c_{Base}'); 
@@ -178,7 +178,7 @@ legend("Messung \pm \sigma","Simulation");
 grid on;
 
 subplot(5,1,5);
-errorbar(Data.O2.t, Data.O2.y, sqrt(Data.O2.var)); hold on;
+errorbar(Data.O2.t, Data.O2.y, sqrt(Data.O2.var), 'o', 'MarkerFaceColor', 'b', 'MarkerSize', 4); hold on;
 plot(t_sim_m2, X2(:,5), 'LineWidth', 2);
 title('Modell2 - Sauerstoff (DOT)'); 
 ylabel('cO_2 (%)'); 
