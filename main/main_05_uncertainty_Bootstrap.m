@@ -6,9 +6,9 @@
 clear; clc; close all;
 
 %% --------------------------------------------------------------------------
-%% MODELL 1
+%% MODELL 1 -> Visualisierung selber aufrufen
 %% --------------------------------------------------------------------------
-%% 1. Laden
+% 1. Laden
 scriptDir   = pwd;
 projectRoot = fileparts(scriptDir);
 
@@ -19,7 +19,7 @@ p_opt = tmp.p_opt;
 addpath(fullfile(projectRoot,'Modelle'),'-begin');
 addpath(fullfile(projectRoot,'utils'),  '-begin');
 
-%% 2. Konfiguration & Messdaten
+% 2. Konfiguration & Messdaten
 kinetic    = 3;       % 3 = Monod
 %--------------------------------------------------------------------------
 withOxygen = false;    % MAIN04 vorher mit =true ausführen!! Sonst gehts nicht
@@ -51,7 +51,7 @@ else
     x0   = [y_bio(1); y_glc(1)];
 end
 
-%% 3. Referenzsimulation mit p_opt  →  Basis für Pseudo-Messdaten
+% 3. Referenzsimulation mit p_opt  →  Basis für Pseudo-Messdaten
 opts_ode = odeset('RelTol',1e-6,'AbsTol',1e-8);
 [~, X_ref] = ode15s(@(t,x) Modell1(t,x,p_opt,kinetic,withOxygen), t_mes, x0, opts_ode);
 y_bio_ref = X_ref(:,1);
@@ -67,7 +67,7 @@ end
 fprintf('\n--- VOR Bootstrapschleife fuer Modell1: ---\n');
 fprintf('Modell1 MUSS vorher bei umstellen von oxygen true/false in\n');
 fprintf(' der main04 mit gleicher Einstellung gelaufen sein! \n');
-%% 4. Bootstrap-Schleife
+% 4. Bootstrap-Schleife
 K      = 300;                   % Anzahl Läufe
 p_boot = zeros(K, np);
 rng(42);
@@ -100,12 +100,12 @@ for k = 1:K
     if mod(k,50)==0, fprintf('  %d/%d\n',k,K); end
 end
 
-%% 5. Ungültige Läufe entfernen
+% 5. Ungültige Läufe entfernen
 valid  = ~any(isnan(p_boot),2);
 p_boot = p_boot(valid,:);
 fprintf('Gueltige Laeufe: %d/%d\n', sum(valid), K);
 
-%% 6. Statistik
+% 6. Statistik
 p_mean  = mean(p_boot,1);
 CV_boot = cov(p_boot);
 
@@ -153,7 +153,7 @@ grid on;
 
 
 %% --------------------------------------------------------------------------
-%% MODELL 2
+%% MODELL 2 -> Visualisierung selber aufrufen
 %% --------------------------------------------------------------------------
 close all; clear all; clc;
 scriptDir   = pwd;
@@ -161,12 +161,12 @@ projectRoot = fileparts(scriptDir);
 load(fullfile(scriptDir,'..','Daten','Daten_Processed','Processed_Batch_Data.mat'));
 addpath(fullfile(projectRoot,'Modelle'),'-begin');
 addpath(fullfile(projectRoot,'utils'),  '-begin');
-%% M2.1 Modell2-Parameter laden
+% M2.1 Modell2-Parameter laden
 tmp2     = load(fullfile(scriptDir,'..','Daten','p_opt_Modell2.mat'));
 p_opt_m2 = tmp2.p_opt_m2;
 p_opt_m2 = p_opt_m2(:);   % als Spaltenvektor sicherstellen
  
-%% M2.2 Messdaten & Konfiguration
+% M2.2 Messdaten & Konfiguration
 % Zwei Zeitgitter:
 %   t_off (Offline): Biomasse, Glucose, Ammonium -> Zustaende 1,2,3
 %   t_on  (Online) : Base, O2                    -> Zustaende 4,5
@@ -186,7 +186,7 @@ namen2 = {'mumax','KS','YXS','YBam','YAmX','YXO','KLa','cO2*'};
  
 x0_m2 = [y_bio2(1); y_glc2(1); y_am(1); y_ba(1); y_o22(1)];
  
-%% M2.3 Referenzsimulation mit p_opt_m2 (je Zeitgitter einmal)
+% M2.3 Referenzsimulation mit p_opt_m2 (je Zeitgitter einmal)
 kinetic    = 3;
 opts_ode = odeset('RelTol',1e-6,'AbsTol',1e-8);
 [~, Xoff] = ode15s(@(t,x) Modell2(t,x,p_opt_m2,kinetic), t_off, x0_m2, opts_ode);
@@ -197,7 +197,7 @@ y_am_ref   = Xoff(:,3);
 y_ba_ref   = Xon(:,4);
 y_o2_ref2  = Xon(:,5);
  
-%% M2.4 Bootstrap-Schleife
+% M2.4 Bootstrap-Schleife
 K2        = 300;
 p_boot_m2 = zeros(K2, np2);
 rng(42);
@@ -225,12 +225,12 @@ for k = 1:K2
     if mod(k,50)==0, fprintf('  %d/%d\n',k,K2); end
 end
  
-%% M2.5 Ungueltige Laeufe entfernen
+% M2.5 Ungueltige Laeufe entfernen
 valid2    = ~any(isnan(p_boot_m2),2);
 p_boot_m2 = p_boot_m2(valid2,:);
 fprintf('Gueltige Laeufe: %d/%d\n', sum(valid2), K2);
  
-%% M2.6 Statistik
+% M2.6 Statistik
 p_mean_m2  = mean(p_boot_m2,1);
 CV_boot_m2 = cov(p_boot_m2);
  

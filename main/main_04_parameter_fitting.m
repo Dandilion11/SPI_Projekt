@@ -18,8 +18,10 @@ var_glc = TrainData.Glucose.var;
 % Wenn tatsächlich glucose gefüttert wird, könnten wir bei exp3 die daten
 % bis zum füttern nehmen
 
-
-%% 1. Load Preprocessed Data
+%% --------------------------------------------------------------------------
+%% MODELL 1 -> Visualisierung selber aufrufen
+%% --------------------------------------------------------------------------
+% 1. Load Preprocessed Data
 projectRoot = pwd;
 load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
@@ -33,11 +35,7 @@ y_glc = Data.Glucose.y;
 var_bio = Data.Biomasse.var;
 var_glc = Data.Glucose.var;
 
-%% --------------------------------------------------------------------------
-%% MODELL 1 
-%% --------------------------------------------------------------------------
-
-%% 2. MODELL1 Modellkofiguration und Anfangswerte
+% 2. MODELL1 Modellkofiguration und Anfangswerte
 % Modell1 expects concentrations (g/L), volume V is removed.
 % Anfangswerte aus der jeweils ersten Messung.
 x0 = [y_bio(1); y_glc(1)];
@@ -70,7 +68,7 @@ if withOxygen
     pUB = [pUB; 5.0; 1000; 150];
 end
 
-%% 3. MODELL1 Parameteridentifikation (WLS) -> uebung5.m / guete_pi_WLS.m
+% 3. MODELL1 Parameteridentifikation (WLS) -> uebung5.m / guete_pi_WLS.m
 
 % Guetefunktion (Weighted Least Squares)
 obj_fun = @(p) calculate_wls_error(p, x0, Data, kinetic, withOxygen);
@@ -79,7 +77,7 @@ obj_fun = @(p) calculate_wls_error(p, x0, Data, kinetic, withOxygen);
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp');
 [p_opt, fval] = fmincon(obj_fun, p0, [], [], [], [], pLB, pUB, [], options);
 
-%% 4. MODELL1 Ausgabe und Speichern der Identifikationsergebnisse
+% 4. MODELL1 Ausgabe und Speichern der Identifikationsergebnisse
 fprintf('\n--- Parameteridentifikation abgeschlossen ---\n');
 fprintf('Finaler WLS-Fehler: %.4f\n', fval);
 fprintf('mu_max = %.4f 1/h\n', p_opt(1));
@@ -151,15 +149,30 @@ xlabel('BatchAge (h)');
 
 
 %% --------------------------------------------------------------------------
-%% MODELL 2
+%% MODELL 2 -> Visualisierung selber aufrufen
 %% --------------------------------------------------------------------------
+projectRoot = pwd;
+load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
+addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+
+% SWAPPED: Using ValData (Experiment 04) for training
+Data = ValData;
+
+t_bio = Data.Biomasse.t;
+y_bio = Data.Biomasse.y;
+t_glc = Data.Glucose.t;
+y_glc = Data.Glucose.y;
+var_bio = Data.Biomasse.var;
+var_glc = Data.Glucose.var;
+
+
 % Zusaetzliche Messgroessen fuer Modell2
 t_am = Data.Ammonium.t;  y_am = Data.Ammonium.y;  var_am = Data.Ammonium.var;
 t_ba = Data.Base.t;      y_ba = Data.Base.y;      var_ba = Data.Base.var;
 t_o2 = Data.O2.t;        y_o2 = Data.O2.y;        var_o2 = Data.O2.var;
 
 
-%% 1. Anfangswerte und Parameter
+% 1. Anfangswerte und Parameter
 % Zustaende: [cX; cGlc; cAm; cBase; cO2]
 x0_m2 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
 
@@ -171,14 +184,14 @@ pUB_m2 = [1.0;  5.0;  1.0;  10;   1.0;   5.0; 1000; 150];
 % Modell-Konfiguration
 kinetic    = 3;      % 3 = Monod
 
-%% 2. Parameteridentifikation (WLS)
+% 2. Parameteridentifikation (WLS)
 obj_fun_m2 = @(p) calculate_wls_error_m2(p, x0_m2, Data, kinetic);
 
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp');
 [p_opt_m2, fval_m2] = fmincon(obj_fun_m2, p0_m2, [], [], [], [], pLB_m2, pUB_m2, [], options);
 
 
-%% 3. Ausgabe und Speichern
+% 3. Ausgabe und Speichern
 fprintf('\n--- Modell2: Parameteridentifikation abgeschlossen ---\n');
 fprintf('Finaler WLS-Fehler: %.4f\n', fval_m2);
 fprintf('mu_max = %.4f 1/h\n',  p_opt_m2(1));
