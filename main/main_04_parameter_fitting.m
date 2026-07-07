@@ -45,7 +45,7 @@ x0 = [y_bio(1); y_glc(1)];
 % Modell-Konfiguration
 kinetic    = 3;      % 3 = Monod
 %--------------------------------------------------------------------------
-withOxygen = true;
+withOxygen = false;
 %--------------------------------------------------------------------------
 % Parametervektor [mu_max; K_S; Y_XS]
 p0  = [0.3;  0.5;  0.15];    % Startwerte
