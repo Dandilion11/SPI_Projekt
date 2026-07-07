@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 %% 1. Daten und optimierte Parameter laden
-scriptDir = fileparts(mfilename('fullpath'));
+scriptDir = pwd;
 loadPath_processed  = fullfile(scriptDir, '..', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
 load(loadPath_processed);
 
@@ -10,8 +10,8 @@ loadPath_processed  = fullfile(scriptDir, '..', 'Daten', 'p_opt.mat');
 p_opt = (load(loadPath_processed));
 p_opt = p_opt.p_opt;
 
-projectRoot = fileparts(fileparts(mfilename('fullpath')));
-addpath(fullfile(projectRoot,'utils'),'-begin');
+projectRoot = pwd;
+addpath(fullfile(projectRoot,'..','utils'),'-begin');
 
 
 % Optimierte Parameter aus Aufgabe 4 (ValData = Experiment 04)
