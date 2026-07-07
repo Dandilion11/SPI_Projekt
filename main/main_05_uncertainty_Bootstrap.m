@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 %% 1. Laden
-scriptDir   = fileparts(mfilename('fullpath'));
+scriptDir   = pwd;
 projectRoot = fileparts(scriptDir);
 
 load(fullfile(scriptDir,'..','Daten','Daten_Processed','Processed_Batch_Data.mat'));
@@ -28,8 +28,7 @@ ub = [1.0,  5.0,  1.0 ];
 
 %% 3. Referenzsimulation mit p_opt  →  Basis für Pseudo-Messdaten
 opts_ode = odeset('RelTol',1e-6,'AbsTol',1e-8);
-[~, X_ref] = ode15s(@(t,x) Modell1(t,x,p_opt,kinetic,withOxygen), ...
-                     t_mes, x0, opts_ode);
+[~, X_ref] = ode15s(@(t,x) Modell1(t,x,p_opt,kinetic,withOxygen), t_mes, x0, opts_ode);
 y_bio_ref = X_ref(:,1);
 y_glc_ref = X_ref(:,2);
 
