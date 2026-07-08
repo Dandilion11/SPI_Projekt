@@ -11,10 +11,10 @@ clear; clc; close all;
 scriptDir = pwd;
 
 % Einen Ordner nach oben gehen
-sg_path = fullfile(scriptDir, '..', 'STRIKE-GOLDD');
+sg_path = fullfile(scriptDir, 'Matlab_Code', 'STRIKE-GOLDD');
 
 % Pfad zum Modell-Ordner
-model_path = fullfile(scriptDir, '..', 'Modelle');
+model_path = fullfile(scriptDir, 'Matlab_Code', 'Modelle');
 
 
 %% STRIKE-GOLDD zum MATLAB-Pfad hinzufügen

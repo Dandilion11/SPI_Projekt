@@ -12,8 +12,8 @@ clear; clc; close all;
 scriptDir   = pwd;
 projectRoot = fileparts(scriptDir);
 
-load(fullfile(scriptDir,'..','Daten','Daten_Processed','Processed_Batch_Data.mat'));
-tmp   = load(fullfile(scriptDir,'..','Daten','p_opt.mat'));
+load(fullfile(scriptDir,'..','Matlab_Code', 'Daten','Daten_Processed','Processed_Batch_Data.mat'));
+tmp   = load(fullfile(scriptDir,'..','Matlab_Code', 'Daten','p_opt.mat'));
 p_opt = tmp.p_opt;
 
 addpath(fullfile(projectRoot,'Modelle'),'-begin');

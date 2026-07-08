@@ -22,9 +22,12 @@ var_glc = TrainData.Glucose.var;
 %% MODELL 1 -> Visualisierung selber aufrufen
 %% --------------------------------------------------------------------------
 % 1. Load Preprocessed Data
-projectRoot = pwd;
-load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+%projectRoot = pwd;
+%load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
+%addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+
+load('Processed_Batch_Data.mat');
+
 
 % SWAPPED: Using ValData (Experiment 04) for training
 Data = ValData;
@@ -90,10 +93,11 @@ if withOxygen
 end
 
 % Speichern der optimierten Parameter -> für main05
-scriptDir = pwd;
-saveDir = fullfile(scriptDir, '..', 'Daten');
-savePath = fullfile(saveDir, 'p_opt.mat');
-save(savePath,"p_opt");
+%scriptDir = pwd;
+%saveDir = fullfile(scriptDir, '..', 'Daten');
+%savePath = fullfile(saveDir, 'p_opt.mat');
+%save(savePath,"p_opt");
+
 %% 5. MODELL1 Visualisierung
 % Simulation nur so lange laufen lassen, wie Batch-Daten vorhanden sind:
 t_end       = max([t_bio(:)+1; t_glc(:)+1]);
@@ -151,9 +155,9 @@ xlabel('BatchAge (h)');
 %% --------------------------------------------------------------------------
 %% MODELL 2 -> Visualisierung selber aufrufen
 %% --------------------------------------------------------------------------
-projectRoot = pwd;
-load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+%projectRoot = pwd;
+%load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
+%addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 
 % SWAPPED: Using ValData (Experiment 04) for training
 Data = ValData;
@@ -204,9 +208,9 @@ fprintf('KLa    = %.4f 1/h\n',  p_opt_m2(7));
 fprintf('cO2*   = %.4f %%\n',   p_opt_m2(8));
 
 % Speichern von Modell2
-scriptDir = pwd;
-saveDir = fullfile(scriptDir, '..', 'Daten');
-save(fullfile(saveDir, 'p_opt_Modell2.mat'), 'p_opt_m2');
+%scriptDir = pwd;
+%saveDir = fullfile(scriptDir, '..', 'Daten');
+%save(fullfile(saveDir, 'p_opt_Modell2.mat'), 'p_opt_m2');
 
 %% 4. Visualisierung Modell 2
 t_end_m2 = max([t_bio(:)+1; t_glc(:)+1; t_am(:)+1; t_ba(:)+1; t_o2(:)+1]);
