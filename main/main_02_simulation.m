@@ -49,7 +49,6 @@ if withOxygen
     cO2_0    = y_o2(1);     % [%]     Start-DOT (aus O2-Messung zu Batch-Beginn)
     YXO      = 1.0;    % [gX/gO2] Ertragskoeffizient Biomasse/Sauerstoff (Schätzwert)
     KLa      = 200;    % [1/h]    volumetrischer O2-Transferkoeffizient (Schätzwert)
-
     x0      = [x0; cO2_0];                       % 3. Zustand ergaenzen
     p_guess = [p_guess, YXO, KLa];     % Parameter 4..6 ergaenzen
 end
