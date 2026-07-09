@@ -119,11 +119,11 @@ dxdt(5) = (rEt_P - YEt_X * rEt_X) * mX - uout * cEt;
 % Kumulierte Base (Gl. 13)
 dxdt(6) = YB_NH4 * YNH4X * (rX + rEt_X) * mX;
 
-dxdt(7) = KLa * (cO2stern - cO2) ...
-        - (1/YXO) * (rX + rEt_X) * (mX/V);
+% dxdt(7) = KLa * (cO2stern - cO2) ...
+%         - (1/YXO) * (rX + rEt_X) * (mX/V);
 
 % Volumen (Gl. 15)
-dxdt(8) = qGlc + qAm + qPh + qBase + qAcid - uout;   
+dxdt(7) = qGlc + qAm + qPh + qBase + qAcid - uout;   
 
 end
 

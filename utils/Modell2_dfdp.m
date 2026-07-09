@@ -3,6 +3,10 @@ function dfdp = Modell2_dfdp(x, p)
 % Zustände: x = [cX, cGlc, cAm, cBase, cO2]
 % Parameter: p = [mumax, KS, YXS, YBam, YAmX, YXO, KLa, cO2stern]
 
+cO2stern = 100;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
+cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
+H       = 100/cO2_sat; 
+
 cX       = x(1);
 cGlc     = x(2);
 cO2      = x(5);
@@ -14,7 +18,6 @@ YBam     = p(4);
 YAmX     = p(5);
 YXO      = p(6);
 KLa      = p(7);
-cO2stern = p(8);
 
 mu     = mumax * cGlc / (KS + cGlc);
 dmu_dm = cGlc / (KS + cGlc);             % dmu/d(mumax)
@@ -35,7 +38,7 @@ dfdp(1,2) = dmu_dK * cX;
 dfdp(2,2) = -1/YXS * dmu_dK * cX;
 dfdp(3,2) = -YAmX * dmu_dK * cX;
 dfdp(4,2) = YBam * YAmX * dmu_dK * cX;
-dfdp(5,2) = -1/YXO * dmu_dK * cX;
+dfdp(5,2) = H * -1/YXO * dmu_dK * cX;
 
 % Parameter 3: YXS
 dfdp(2,3) = (1 / YXS^2) * mu * cX;
@@ -48,12 +51,9 @@ dfdp(3,5) = -mu * cX;
 dfdp(4,5) = YBam * mu * cX;
 
 % Parameter 6: YXO
-dfdp(5,6) = (1 / YXO^2) * mu * cX;
+dfdp(5,6) = (H / YXO^2) * mu * cX;
 
 % Parameter 7: KLa
 dfdp(5,7) = cO2stern - cO2;
-
-% Parameter 8: cO2stern
-dfdp(5,8) = KLa;
 
 end

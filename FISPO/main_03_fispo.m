@@ -11,10 +11,10 @@ clear; clc; close all;
 scriptDir = pwd;
 
 % Einen Ordner nach oben gehen
-sg_path = fullfile(scriptDir, 'Matlab_Code', 'STRIKE-GOLDD');
+sg_path = fullfile(fileparts(pwd), 'STRIKE-GOLDD');
 
 % Pfad zum Modell-Ordner
-model_path = fullfile(scriptDir, 'Matlab_Code', 'Modelle');
+model_path = fullfile(fileparts(pwd), 'Modelle');
 
 
 %% STRIKE-GOLDD zum MATLAB-Pfad hinzufügen
@@ -126,20 +126,23 @@ fprintf('=============================================================\n\n');
 
 % Modell aufstellen
 syms cX cGlc cO2 real       
-syms mumax KS YXS YXO KLa cO2stern real  
+syms mumax KS YXS YXO KLa real  
 
 x        = [cX; cGlc; cO2];                          % 1. Zustandsvektor (inkl. O2)
-p        = [mumax; KS; YXS; YXO; KLa; cO2stern];     % 2. Parametervektor (inkl. O2-Parameter)
+p        = [mumax; KS; YXS; YXO; KLa];     % 2. Parametervektor (inkl. O2-Parameter)
 u        = [];                                       % 3. Bekannte Eingänge 
 w        = [];                                       % 4. Unbekannte Eingänge / Störgrößen
 ic       = [];                                       % 5. Anfangsbedingungen
 known_ic = [];                                       % 6. Bekannte ICs
 
+H = 1;
+cO2stern = 100;
+
 % Wachstumsrate und Differentialgleichungen (f)
 mu = mumax * cGlc / (KS + cGlc);
 f  = [ mu * cX;                                         % Biomasse
       -1/YXS * mu * cX;                                 % Glucose
-       KLa * (cO2stern - cO2) - 1/YXO * mu * cX];       % O2-Bilanz
+       KLa * (cO2stern - cO2) - H * 1/YXO * mu * cX];       % O2-Bilanz
 
 % Messgleichungen (h) - Annahme: Alle 3 Zustände können gemessen werden
 h  = [cX; cGlc; cO2];              

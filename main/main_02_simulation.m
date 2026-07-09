@@ -47,12 +47,11 @@ p_guess = [0.3, 0.5, 0.15];
 
 if withOxygen
     cO2_0    = y_o2(1);     % [%]     Start-DOT (aus O2-Messung zu Batch-Beginn)
-    YXO      = 1.0;    % [gX/gO2] Ertragskoeffizient Biomasse/Sauerstoff (Schaetzwert)
-    KLa      = 200;    % [1/h]    volumetrischer O2-Transferkoeffizient (Schaetzwert)
-    cO2stern = 100;    % [%]      Saettigungs-DOT (Gleichgewicht mit Gasphase)
+    YXO      = 1.0;    % [gX/gO2] Ertragskoeffizient Biomasse/Sauerstoff (Schätzwert)
+    KLa      = 200;    % [1/h]    volumetrischer O2-Transferkoeffizient (Schätzwert)
 
     x0      = [x0; cO2_0];                       % 3. Zustand ergaenzen
-    p_guess = [p_guess, YXO, KLa, cO2stern];     % Parameter 4..6 ergaenzen
+    p_guess = [p_guess, YXO, KLa];     % Parameter 4..6 ergaenzen
 end
 
 
@@ -126,7 +125,7 @@ clear Modell2
 
 x0_m2 = [Data.Biomasse.y(1); Data.Glucose.y(1); Data.Ammonium.y(1); Data.Base.y(1); Data.O2.y(1)];
 
-% Startschaetzwerte: GEGENCHECKEN!!!!!
+% Startschätzwerte: GEGENCHECKEN!!!!!
 %   YBam = Yield Base/Ammonium, YAmX = Yield Ammonium/Biomasse
 p_guess_m2 = [0.3, 0.5, 0.15, 1.0, 0.05, 1.0, 200, 100];
 
