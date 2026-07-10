@@ -1,2 +1,2 @@
-function dfdx = Modell2_dfdx(x, p)
+function dfdx = Modell3_dfdx(x, p)
 

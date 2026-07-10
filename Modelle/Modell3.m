@@ -32,6 +32,8 @@ YGlc_Et   = p(9);
 YEt_X     = p(10);
 KEt       = p(11);
 KGlc_Et   = p(12);
+KLa       = p(13);
+YXO       = p(14);
 
 %% Konzentrationen
 cGlc = mGlc / V;
@@ -44,12 +46,10 @@ cPh = mPh / V;
 % rX: Biomassewachstum auf Glucose (Gl. 16)                   % Monod (Standard)
  rX = mumax * cGlc / (KS + cGlc);
 
-% rEt_P: Ethanolproduktion (Crabtree-Effekt, Gl. 17)
-% Aktiv bei hoher Glukose → Overflow-Metabolismus
+% rEt_P: Ethanolproduktion (Crabtree-Effekt, Gl. 17): Aktiv bei hoher Glukose → Overflow-Metabolismus
 rEt_P = mumax_EtP * cGlc / (cGlc + KS);
 
-% rEt_X: Ethanolverbrauch (Gl. 18)
-% Aktiv bei niedriger Glukose + vorhandenem Ethanol
+% rEt_X: Ethanolverbrauch (Gl. 18): Aktiv bei niedriger Glukose + vorhandenem Ethanol
 rEt_X = mumax_EtX * (cEt / (cEt + KEt)) * (KGlc_Et / (cGlc + KGlc_Et));
 
 %% Stellgrößen aus u-Matrix (Krämer 2016/2017 und laut Terrance Beschreibung der Eingänge)
@@ -69,39 +69,19 @@ uAcid   = u(9,  idx);   % Säure-Feedrate [L/h]
 uBase   = u(10, idx);   % Base-Feedrate [L/h]
 
 %% Probenahme-Abfluss
-% Probenahmen diskret (~1–2 mL) → uout = 0 in der DGL.
 % Diskrete Zustandskorrektur für Probenentnahme in Simulation
 uout = 0;
 
 %% Massenbilanzen (Krämer & King 2017, Gl. 7–15)
 dxdt = zeros(8, 1);
-
-% Biomasse (Gl. 7): Wachstum auf Glc + Wachstum auf EtOH
-dxdt(1) = (rX + rEt_X) * mX;
-
-% Glucose (Gl. 10): Verbrauch durch Wachstum + EtOH-Produktion + Feed
-dxdt(2) = (-1/YXS * rX - YGlc_Et * rEt_P) * mX ...
-          + cGlc_in * uGlc - uout * cGlc;
-
-% Ammonium (Gl. 8): Verbrauch gesamt + Feed
-dxdt(3) = -YAmX * (rX + rEt_X) * mX ...
-          + cAm_in * uAm - uout * cAm; 
-
-% Phosphat (Gl. 9): Verbrauch gesamt + Feed
-dxdt(4) = -YPhX * (rX + rEt_X) * mX ...
-          + cPh_in * uPh - uout * cPh; 
-
-% Ethanol (Gl. 11): Produktion – Verbrauch
-dxdt(5) = (rEt_P - YEt_X * rEt_X) * mX - uout * cEt;    
-
-% Kumulierte Base (Gl. 13)
-dxdt(6) = YB_Am * YAmX * (rX + rEt_X) * mX;
-
-dxdt(7) = KLa * (cO2stern - DOT) ...
-         -H * (1/YXO) * (rX + rEt_X) * (mX/V);
-
-% Volumen (Gl. 15)
-dxdt(8) = uGlc + uAm + uPh + uBase + uAcid - uout;   
+dxdt(1) = uGlc + uAm + uPh + uBase + uAcid - uout;                      % V
+dxdt(2) = (rX + rEt_X) * mX;                                            % mX
+dxdt(3) = (-1/YXS*rX - YGlc_Et*rEt_P)*mX + cGlc_in*uGlc - uout*cGlc;    % mGlc
+dxdt(4) = -YAmX*(rX+rEt_X)*mX + cAm_in*uAm - uout*cAm;                  % mAm
+dxdt(5) = -YPhX*(rX+rEt_X)*mX + cPh_in*uPh - uout*cPh;                  % mPh
+dxdt(6) = YB_Am*YAmX*(rX+rEt_X)*mX;                                     % mB
+dxdt(7) = KLa*(cO2stern-DOT) - H * (1/YXO)*(rX+rEt_X)*(mX/V);           % DOT
+dxdt(8) = (rEt_P - YEt_X*rEt_X)*mX - uout*cEt;                          % mEt 
 
 end
 
