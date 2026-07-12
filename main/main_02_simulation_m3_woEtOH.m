@@ -20,8 +20,8 @@ load(loadPath);
 Data = TrainData; % Geht auch ValData -> zum schnelleren wechseln
 
 % Anfangswerte und Parameter
-%   [mumax,KS,YXS,YAmX,YPhX,YB_Am,mumax_EtP,mumax_EtX,YGlc_Et,YEt_X,KEt,KGlc_Et, KLa, YXO]
-p_guess = [0.3, 0.5, 0.15, 0.05, 0.02, 1.0, 0.1, 0.1, 0.5, 0.5, 0.1, 0.1, 200, 1.0];
+%   [mumax,KS,YXS,YAmX,YPhX,YB_Am, KLa, YXO]
+p_guess = [0.3, 0.5, 0.15, 0.05, 0.02, 1.0, 200, 1.0];
 x0 = Data.x0;
 u = Data.u;
 
@@ -36,7 +36,7 @@ assert(size(Data.u,1) >= 10, 'u-Matrix hat zu wenige Zeilen (%d)', size(Data.u,1
 DOTstern = max(Data.O2.y);
 
 options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3]  = ode45(@(t, x) Modell3(t, x, u, p_guess, DOTstern), t_sim, x0, options);
+[~, X3]  = ode45(@(t, x) Modell3_Jannis(t, x, u, p_guess, DOTstern), t_sim, x0, options);
 
 V    = X3(:,1);
 cX   = X3(:,2)./V;   % Biomasse [g/L]

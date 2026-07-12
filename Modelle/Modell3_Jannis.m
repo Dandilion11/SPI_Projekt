@@ -1,4 +1,4 @@
-function dxdt = Modell2(t, x, p, u, DOTstern)
+function dxdt = Modell3_Jannis(t, x, u, p, DOTstern)
 % Modell2 angepasst an das vollständige Modell:
 %
 % x = [V; m_X; m_glc; DOT; m_am; m_ph; m_b]
@@ -9,15 +9,14 @@ function dxdt = Modell2(t, x, p, u, DOTstern)
 u = u(:);
 x = max(x(:), 0);
 
-
 %% Zustände
 V     = x(1);
 m_X   = x(2);  % Biomasse
 m_glc = x(3);  % Glucose
 DOT   = x(4);  % Dissolved Oxygen Tension
-m_am  = x(5);  % Ammonium
-m_ph  = x(6);  % Phosphat
-m_b   = x(7);  % Base
+% m_am  = x(5);  % Ammonium
+% m_ph  = x(6);  % Phosphat
+% m_b   = x(7);  % Base
 
 %% Konzentrationen
 c_X   = m_X / V;

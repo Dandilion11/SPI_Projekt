@@ -50,11 +50,11 @@ t_sim   = linspace(t_start, t_end, 300);
 
 DOTstern = max(Data.O2.y);
 options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3] = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p_opt,DOTstern), t_sim, x0, options_ode);
+[~, X3] = ode45(@(t,x) Modell3_woEtOH(t,x,u,p_opt,DOTstern), t_sim, x0, options_ode);
 
 V    = X3(:,1);
 cX   = X3(:,2)./V;   cGlc = X3(:,3)./V;   cAm = X3(:,4)./V;
-cPh  = X3(:,5)./V;   mB   = X3(:,6);      DOT = X3(:,7);   cEt = X3(:,8)./V;
+cPh  = X3(:,5)./V;   mB   = X3(:,6);      DOT = X3(:,7);
 
 figure('Name','Modell3 - Parameter Fitting','Position',[200 40 950 1000]);
 plot_row(1, Data.Biomasse, t_sim, cX,   'Biomasse',  'c_X (g/L)');
@@ -78,7 +78,7 @@ function J = wls_error_m3(p, x0, u, Data)
           Data.Ammonium, 4, true;   ...
           Data.Phosphat, 5, true;   ...
           Data.Base,     6, false;  ...   % mB direkt
-          %Data.O2,       7, false;  ...   % DOT direkt
+          Data.O2,       7, false;  ...   % DOT direkt
           };
 
     DOTstern = max(Data.O2.y);
@@ -95,7 +95,7 @@ function J = wls_error_m3(p, x0, u, Data)
     % Einmalige Simulation
     opts = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
     try
-        [~, X] = ode15s(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
+        [~, X] = ode45(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
     catch
         J = 1e8; return;
     end

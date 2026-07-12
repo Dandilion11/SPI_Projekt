@@ -1,8 +1,8 @@
 function dxdt = Modell3_woEtOH(t, x, u, p, DOTstern)
-% Modell 3: Fed-Batch MIT Ethanol (Krämer & King 2017, Gl. 7–15)
-% Sauerstoff nicht als Zustand, weil der Konstant auf >=50% gehalten wird,
-% durch den Rührer
-%
+% Modell 3: Fed-Batch ohne (Krämer & King 2017, Gl. 7–15)
+
+%Ethanol ist in den Messwerten immer 0 und wurde nicht über die ganze
+%Messdauer aufgezeichnet deshalb die Version ohne EtOH
 
 x = max(x, 0);
 
@@ -64,13 +64,13 @@ uBase   = u(10, idx);   % Base-Feedrate [L/h]
 uout = 0;
 
 %% Massenbilanzen (Krämer & King 2017, Gl. 7–15)
-dxdt = zeros(8, 1);
+dxdt = zeros(7, 1);
 dxdt(1) = uGlc + uAm + uPh + uBase + uAcid - uout;                      % V
 dxdt(2) = (rX) * mX;                                            % mX
-dxdt(3) = (-1/YXS*rX)*mX + cGlc_in*uGlc - uout*cGlc;    % mGlc
+dxdt(3) = (-1/YXS*rX)*mX + cGlc_in*uGlc - uout*cGlc;            % mGlc
 dxdt(4) = -YAmX*rX*mX + cAm_in*uAm - uout*cAm;                  % mAm
 dxdt(5) = -YPhX*rX*mX + cPh_in*uPh - uout*cPh;                  % mPh
 dxdt(6) = YB_Am*YAmX*rX*mX;                                     % mB
-dxdt(7) = KLa*(cO2stern-DOT) - H * (1/YXO)*(rX)*(mX/V);           % DOT
+dxdt(7) = KLa*(cO2stern-DOT) - H * (1/YXO)*(rX)*(mX/V);         % DOT
 
 end
