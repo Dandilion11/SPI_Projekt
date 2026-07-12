@@ -1,4 +1,4 @@
-function dxdt = Modell2(t,x,p, kinetic)
+function dxdt = Modell2(t,x,p, kinetic, DOTstern)
 % Erweiterung des Modells 1 um eine Base-Consumption (pH-Regelung eines
 % saeure-/ammonium-zehrenden Prozesses) sowie eine Sauerstoffbilanz.
 %% Grenzen der Zustände
@@ -13,7 +13,7 @@ cAm   = x(3);  % Ammonium             [g/L]
 cBase = x(4);  % zugegebene Base      [mol/L bzw. L-Aequivalent]
 cO2   = x(5);  % geloester Sauerstoff [g/L]   (FIX: vorher faelschlich x(3))
 
-cO2stern = 100;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
+cO2stern = DOTstern;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
 cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
 H       = 100/cO2_sat; 
 %% Parameter

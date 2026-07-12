@@ -88,4 +88,3 @@ dxdt(7) = KLa*(cO2stern-DOT) - H * (1/YXO)*(rX+rEt_X)*(mX/V);           % DOT
 dxdt(8) = (rEt_P - YEt_X*rEt_X)*mX - uout*cEt;                          % mEt 
 
 end
-

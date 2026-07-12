@@ -2,7 +2,7 @@
 % kinetic 1 für Moser/Blachmann, Kinetic 2 für exponential und Kinetic 3
 % für Monod
 
-function dxdt = Modell1(t, x, p, kinetic, withOxygen)
+function dxdt = Modell1(t, x, p, kinetic, withOxygen, DOTstern)
 
 x = max(x, 0);
 
@@ -13,7 +13,7 @@ if withOxygen == true
     cO2  = x(3);  % Sauerstoff DOT
 end
 
-cO2stern = 100;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
+cO2stern = DOTstern;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
 cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
 H       = 100/cO2_sat; 
 %% Parameter

@@ -74,4 +74,3 @@ dxdt(6) = YB_Am*YAmX*rX*mX;                                     % mB
 dxdt(7) = KLa*(cO2stern-DOT) - H * (1/YXO)*(rX)*(mX/V);           % DOT
 
 end
-

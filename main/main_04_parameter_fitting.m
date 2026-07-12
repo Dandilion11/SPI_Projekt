@@ -52,12 +52,13 @@ withOxygen = true;
 p0  = [0.3;  0.5;  0.15];    % Startwerte
 pLB = [0.01; 0.01; 0.01];    % untere Schranken
 pUB = [1.0;  5.0;  1.0];     % obere Schranken (K_S oben gelockert)
-
+DOTstern = 0;
 if withOxygen
     % Sauerstoffmessung (DOT)
     t_o2 = Data.O2.t;  
     y_o2 = Data.O2.y;  
     var_o2 = Data.O2.var;
+    DOTstern = max(y_o2);
 
     % 3. Zustand ergaenzen: cO2 (Start-DOT aus O2-Messung zu Batch-Beginn)
     x0 = [x0; y_o2(1)];
@@ -102,7 +103,7 @@ t_end       = max([t_bio(:)+1; t_glc(:)+1]);
 t_sim       = linspace(0, t_end, 200);
 options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
 
-[~, X_sim] = ode45(@(t, x) Modell1(t, x, p_opt, kinetic, withOxygen), t_sim, x0, options_ode);
+[~, X_sim] = ode45(@(t, x) Modell1(t, x, p_opt, kinetic, withOxygen, DOTstern), t_sim, x0, options_ode);
 
 c_X_sim   = X_sim(:, 1);
 c_Glc_sim = X_sim(:, 2);
@@ -167,11 +168,10 @@ y_glc = Data.Glucose.y;
 var_bio = Data.Biomasse.var;
 var_glc = Data.Glucose.var;
 
-
-% Zusaetzliche Messgroessen fuer Modell2
 t_am = Data.Ammonium.t;  y_am = Data.Ammonium.y;  var_am = Data.Ammonium.var;
 t_ba = Data.Base.t;      y_ba = Data.Base.y;      var_ba = Data.Base.var;
 t_o2 = Data.O2.t;        y_o2 = Data.O2.y;        var_o2 = Data.O2.var;
+DOTstern = max(y_o2);
 
 
 % 1. Anfangswerte und Parameter
@@ -214,7 +214,7 @@ t_end_m2 = max([t_bio(:)+1; t_glc(:)+1; t_am(:)+1; t_ba(:)+1; t_o2(:)+1]);
 t_sim_m2 = linspace(0, t_end_m2, 300);
 
 options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X2] = ode15s(@(t, x) Modell2(t, x, p_opt_m2, kinetic), t_sim_m2, x0_m2, options_ode);
+[~, X2] = ode15s(@(t, x) Modell2(t, x, p_opt_m2, kinetic, DOTstern), t_sim_m2, x0_m2, options_ode);
 
 figure('Name', 'Task 4: Parameter Identification (Modell2: +Base +O2)', 'Position', [250, 80, 950, 950]);
 
@@ -298,10 +298,11 @@ function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
     % Messgroessen (jede Groesse mit eigenem Zeitvektor)
     t_bio = Data.Biomasse.t(:); y_bio = Data.Biomasse.y(:); var_bio = Data.Biomasse.var(:);
     t_glc = Data.Glucose.t(:);  y_glc = Data.Glucose.y(:);  var_glc = Data.Glucose.var(:);
-
+    DOTstern = 0;
     if withOxygen
         t_o2 = Data.O2.t(:); y_o2 = Data.O2.y(:); var_o2 = Data.O2.var(:);
         t_all = unique([t_bio; t_glc; t_o2]);   % vereinigtes Zeitraster
+        DOTstern = max(y_o2);
     else
         t_all = unique([t_bio; t_glc]);
     end
@@ -310,7 +311,7 @@ function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
     % (ode15s liefert bei >= 3 Zeitpunkten die Loesung exakt an diesen Punkten.)
     options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
     try
-        [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen), t_all, x0, options);
+        [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen, DOTstern), t_all, x0, options);
     catch
         J = 1e6; return;   % Strafterm bei Integrationsfehler
     end

@@ -26,8 +26,12 @@ x0 = Data.x0;
 u = Data.u;
 
 % Simulation
-t_end = max(Data.Biomasse.t(:)) + 1;
-t_sim = linspace(0, t_end, 300);
+t_start = Data.u(1,1);              % = 0.03
+t_end   = max(Data.Biomasse.t(:)) + 1;
+t_sim   = linspace(t_start, t_end, 300);
+
+fprintf('u-Startzeit = %.4f, t_sim-Startzeit = %.4f\n', Data.u(1,1), t_sim(1));
+assert(size(Data.u,1) >= 10, 'u-Matrix hat zu wenige Zeilen (%d)', size(Data.u,1));
 
 options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
 [~, X3]  = ode45(@(t, x) Modell3(t, x, u, p_guess), t_sim, x0, options);
