@@ -30,7 +30,7 @@ var_glc = Data.Glucose.var;
 t_o2 = Data.O2.t;
 y_o2 = Data.O2.y;
 var_o2 = Data.O2.var;
-
+DOTstern = max(y_o2);
 %% A2. Anfangswerte und Parameter
 kinetic = 3; % 3 = Monod
 %--------------------------------------------------------------------------
@@ -63,7 +63,7 @@ options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
 
 
 % Call Modell1 with the required flags
-[~, X_sim] = ode45(@(t, x) Modell1(t, x, p_guess, kinetic, withOxygen), t_sim, x0, options);
+[~, X_sim] = ode45(@(t, x) Modell1(t, x, p_guess, kinetic, withOxygen, DOTstern), t_sim, x0, options);
 fprintf('[OK] Simulation \n');
 
 %% A4. Extract Data
@@ -133,7 +133,7 @@ t_end_m2 = max([Data.Biomasse.t(:)+1; Data.Glucose.t(:)+1; Data.Ammonium.t(:)+1;
 
 t_sim_m2 = linspace(0, t_end_m2, 300);
 
-[~, X2]  = ode45(@(t, x) Modell2(t, x, p_guess_m2, kinetic), t_sim_m2, x0_m2, options);
+[~, X2]  = ode45(@(t, x) Modell2(t, x, p_guess_m2, kinetic, DOTstern), t_sim_m2, x0_m2, options);
 
 
 %% B8. Plot Modell2

@@ -1,13 +1,11 @@
-function dxdt = Modell3(t, x, u, p)
+function dxdt = Modell3(t, x, u, p, DOTstern)
 % Modell 3: Fed-Batch MIT Ethanol (Krämer & King 2017, Gl. 7–15)
 % Sauerstoff nicht als Zustand, weil der Konstant auf >=50% gehalten wird,
 % durch den Rührer
 %
 
 x = max(x, 0);
-cO2stern = 100;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
-cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
-H       = 100/cO2_sat; 
+
 % Nach Input struct     % Zustände entsprechend des
 % aus Preprocessing     % Mess.Messdaten-Structs                 
 V    = x(1);            % V    = x(1);
@@ -19,6 +17,9 @@ mB   = x(6);            % mB   = x(7);
 DOT  = x(7);            % DOT  = x(8);
 mEt  = x(8);            % mEt  = x(9);
 
+cO2stern = DOTstern; %Laut Nachricht von Terrance max(DOT) statt 100 aus Enfors -> Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
+cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
+H       = 100/cO2_sat; 
 %% Parameter
 mumax     = p(1);
 KS        = p(2);
@@ -55,6 +56,10 @@ rEt_X = mumax_EtX * (cEt / (cEt + KEt)) * (KGlc_Et / (cGlc + KGlc_Et));
 %% Stellgrößen aus u-Matrix (Krämer 2016/2017 und laut Terrance Beschreibung der Eingänge)
 tu  = u(1,:);
 idx = find(t >= tu, 1, 'last');
+if isempty(idx)
+    idx = 1;                 % vor erstem Zeitpunkt: ersten Wert halten
+end
+idx = min(idx, size(u,2));
 
 uAm     = u(2,  idx);   % Ammonium-Feedrate [L/h] 
 cAm_in  = u(3,  idx);  % Ammonium-Eingangskonzentration [g/L] (30 g/L)
