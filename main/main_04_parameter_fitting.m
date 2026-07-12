@@ -22,11 +22,11 @@ var_glc = TrainData.Glucose.var;
 %% MODELL 1 -> Visualisierung selber aufrufen
 %% --------------------------------------------------------------------------
 % 1. Load Preprocessed Data
-%projectRoot = pwd;
-%load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
-%addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+projectRoot = pwd;
+load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_Batch_Data.mat'));
+addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 
-load('Processed_Batch_Data.mat');
+%load('Processed_Batch_Data.mat');
 
 
 % SWAPPED: Using ValData (Experiment 04) for training
@@ -46,7 +46,7 @@ x0 = [y_bio(1); y_glc(1)];
 % Modell-Konfiguration
 kinetic    = 3;      % 3 = Monod
 %--------------------------------------------------------------------------
-withOxygen = false;
+withOxygen = true;
 %--------------------------------------------------------------------------
 % Parametervektor [mu_max; K_S; Y_XS]
 p0  = [0.3;  0.5;  0.15];    % Startwerte
@@ -62,18 +62,17 @@ if withOxygen
     % 3. Zustand ergaenzen: cO2 (Start-DOT aus O2-Messung zu Batch-Beginn)
     x0 = [x0; y_o2(1)];
 
-    % Satrtwerte [Y_XO; KLa; cO2*]
+    % Satrtwerte [Y_XO; KLa]
     %   Y_XO = Ertragskoeffizient Biomasse/O2
     %   KLa  = volumetrischer O2-Transferkoeffizient [1/h]
-    %   cO2* = Saettigungs-DOT (Gleichgewicht mit Gasphase) [%]
-    p0  = [p0;  1.0; 200; 100];
-    pLB = [pLB; 0.01;   1;  50];
-    pUB = [pUB; 5.0; 1000; 150];
+    p0  = [p0;  1.0; 200];
+    pLB = [pLB; 0.01;   1];
+    pUB = [pUB; 5.0; 1000];
 end
 
 % 3. MODELL1 Parameteridentifikation (WLS) -> uebung5.m / guete_pi_WLS.m
 
-% Guetefunktion (Weighted Least Squares)
+% Gütefunktion (Weighted Least Squares)
 obj_fun = @(p) calculate_wls_error(p, x0, Data, kinetic, withOxygen);
 
 % Durchfuehrung der Optimierung mit fmincon
@@ -89,14 +88,13 @@ fprintf('Y_XS   = %.4f g/g\n', p_opt(3));
 if withOxygen
     fprintf('Y_XO   = %.4f g/g\n', p_opt(4));
     fprintf('KLa    = %.4f 1/h\n', p_opt(5));
-    fprintf('cO2*   = %.4f %%\n',  p_opt(6));
 end
 
 % Speichern der optimierten Parameter -> für main05
-%scriptDir = pwd;
-%saveDir = fullfile(scriptDir, '..', 'Daten');
-%savePath = fullfile(saveDir, 'p_opt.mat');
-%save(savePath,"p_opt");
+scriptDir = pwd;
+saveDir = fullfile(scriptDir, '..', 'Daten');
+savePath = fullfile(saveDir, 'p_opt.mat');
+save(savePath,"p_opt");
 
 %% 5. MODELL1 Visualisierung
 % Simulation nur so lange laufen lassen, wie Batch-Daten vorhanden sind:
@@ -181,9 +179,9 @@ t_o2 = Data.O2.t;        y_o2 = Data.O2.y;        var_o2 = Data.O2.var;
 x0_m2 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
 
 % Parameter: [mu_max; K_S; Y_XS; Y_Bam; Y_AmX; Y_XO; KLa; cO2*]
-p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  1.0; 200; 100];
-pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;   1;  50];
-pUB_m2 = [1.0;  5.0;  1.0;  10;   1.0;   5.0; 1000; 150];
+p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  1.0; 200];
+pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;   1];
+pUB_m2 = [1.0;  5.0;  1.0;  10;   1.0;   5.0; 1000];
 
 % Modell-Konfiguration
 kinetic    = 3;      % 3 = Monod
@@ -205,7 +203,6 @@ fprintf('Y_Bam  = %.4f\n',      p_opt_m2(4));
 fprintf('Y_AmX  = %.4f\n',      p_opt_m2(5));
 fprintf('Y_XO   = %.4f g/g\n',  p_opt_m2(6));
 fprintf('KLa    = %.4f 1/h\n',  p_opt_m2(7));
-fprintf('cO2*   = %.4f %%\n',   p_opt_m2(8));
 
 % Speichern von Modell2
 %scriptDir = pwd;
