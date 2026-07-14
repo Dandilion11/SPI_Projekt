@@ -45,6 +45,7 @@ cAm  = X3(:,4)./V;   % Ammonium [g/L]
 cPh  = X3(:,5)./V;   % Phosphat [g/L]
 mB   = X3(:,6);      % kumulierte Base
 DOT  = X3(:,7);      % Sauerstoff [%]
+mEtOH = X3(:,8);
 
 % Plot Modell3
 figure('Name','Simulation Modell3 (Fed-Batch + Ethanol)','Position',[200 40 950 1000]);
@@ -91,6 +92,12 @@ plot(t_sim, DOT, 'LineWidth', 2);
 title('Modell3 - Sauerstoff (DOT)'); ylabel('DOT (%)');
 legend("Messung \pm \sigma","Simulation"); grid on;
 
+subplot(7,1,7);
+errorbar(Data.EtOH.t, Data.EtOH.y, sqrt(Data.EtOH.var), 'o', ...
+         'MarkerFaceColor','b','MarkerSize',4); hold on;
+plot(t_sim, DOT, 'LineWidth', 2);
+title('Modell3 - Ethanol'); ylabel('EtOH [g/L]');
+legend("Messung \pm \sigma","Simulation"); grid on;
 
 
 
