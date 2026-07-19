@@ -126,7 +126,8 @@ x0_m2 = [Data.Biomasse.y(1); Data.Glucose.y(1); Data.Ammonium.y(1); Data.Base.y(
 
 % Startschätzwerte: GEGENCHECKEN!!!!!
 %   YBam = Yield Base/Ammonium, YAmX = Yield Ammonium/Biomasse
-p_guess_m2 = [0.3, 0.5, 0.15, 1.0, 0.05, 1.0, 200, 100];
+p_guess_m2 = [0.3, 0.5, 0.15, 1.0, 0.05, 1.0, 200];
+DOTstern = max(y_o2);
 
 %% B7. Simulation
 t_end_m2 = max([Data.Biomasse.t(:)+1; Data.Glucose.t(:)+1; Data.Ammonium.t(:)+1; Data.Base.t(:)+1; Data.O2.t(:)+1]);

@@ -52,6 +52,7 @@ withOxygen = true;
 p0  = [0.3;  0.5;  0.15];    % Startwerte
 pLB = [0.01; 0.01; 0.01];    % untere Schranken
 pUB = [1.0;  5.0;  1.0];     % obere Schranken (K_S oben gelockert)
+
 DOTstern = 0;
 if withOxygen
     % Sauerstoffmessung (DOT)
@@ -68,7 +69,7 @@ if withOxygen
     %   KLa  = volumetrischer O2-Transferkoeffizient [1/h]
     p0  = [p0;  1.0; 200];
     pLB = [pLB; 0.01;   1];
-    pUB = [pUB; 5.0; 1000];
+    pUB = [pUB; 500.0; 1000];
 end
 
 % 3. MODELL1 Parameteridentifikation (WLS) -> uebung5.m / guete_pi_WLS.m
@@ -178,10 +179,13 @@ DOTstern = max(y_o2);
 % Zustaende: [cX; cGlc; cAm; cBase; cO2]
 x0_m2 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
 
-% Parameter: [mu_max; K_S; Y_XS; Y_Bam; Y_AmX; Y_XO; KLa; cO2*]
+% Parameter: [mu_max; K_S; Y_XS; Y_Bam; Y_AmX; Y_XO; KLa]
 p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  1.0; 200];
 pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;   1];
-pUB_m2 = [1.0;  5.0;  1.0;  10;   1.0;   5.0; 1000];
+pUB_m2 = [10.0; 500.0; 1.0; 10; 1.0; 5.0; 1000]; 
+%pUB KS von 5 auf 500 erweitert, weil er bei 5 und 50 an die obere Grenze gestoßen ist
+%mu_max von 1 auf 10 erhöht
+
 
 % Modell-Konfiguration
 kinetic    = 3;      % 3 = Monod
@@ -205,9 +209,9 @@ fprintf('Y_XO   = %.4f g/g\n',  p_opt_m2(6));
 fprintf('KLa    = %.4f 1/h\n',  p_opt_m2(7));
 
 % Speichern von Modell2
-%scriptDir = pwd;
-%saveDir = fullfile(scriptDir, '..', 'Daten');
-%save(fullfile(saveDir, 'p_opt_Modell2.mat'), 'p_opt_m2');
+scriptDir = pwd;
+saveDir = fullfile(scriptDir, '..', 'Daten');
+save(fullfile(saveDir, 'p_opt_Modell2.mat'), 'p_opt_m2');
 
 %% 4. Visualisierung Modell 2
 t_end_m2 = max([t_bio(:)+1; t_glc(:)+1; t_am(:)+1; t_ba(:)+1; t_o2(:)+1]);
@@ -312,9 +316,12 @@ function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
     options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
     try
         [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen, DOTstern), t_all, x0, options);
-    catch
-        J = 1e6; return;   % Strafterm bei Integrationsfehler
+    catch ME
+        warning('Modell1-Integration fehlgeschlagen: %s', ME.message);
+        J = 1e6;
+        return;
     end
+
 
     % Simulationswerte den jeweiligen Messzeitpunkten zuordnen
     [~, iBio] = ismember(t_bio, t_all);
@@ -343,16 +350,16 @@ function J = calculate_wls_error_m2(p, x0, Data, kinetic)
     t_o2  = Data.O2.t(:);       y_o2  = Data.O2.y(:);       var_o2  = Data.O2.var(:);
 
     t_all = unique([t_bio; t_glc; t_am; t_ba; t_o2]);   % vereinigtes Zeitraster
+    DOTstern = max(y_o2);
 
     % Einmalige Simulation ueber das vereinigte Zeitraster.
     options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
     try
-        [~, X_sim] = ode15s(@(t, x) Modell2(t, x, p, kinetic), t_all, x0, options);
-    catch
-        J = 1e6; return;
-    end
-    if size(X_sim, 1) ~= numel(t_all)
-        J = 1e6; return;
+        [~, X_sim] = ode15s(@(t, x) Modell2(t, x, p, kinetic, DOTstern), t_all, x0, options);
+    catch ME
+        warning('Modell2-Integration fehlgeschlagen: %s', ME.message);
+        J = 1e6;
+        return;
     end
 
     % Simulationswerte den jeweiligen Messzeitpunkten zuordnen

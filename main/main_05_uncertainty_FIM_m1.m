@@ -34,25 +34,23 @@ kinetic    = 3; % kinetic 1 für Moser/Blachmann, Kinetic 2 für exponential und
 withOxygen = true;
 
 if withOxygen
+    DOTstern = max(y_o2);
     nx = 3; np = 5;
     x0 = [y_bio(1); y_glc(1); y_o2(1)];
-    C_mean = diag([mean(var_bio), mean(var_glc), mean(var_o2)]); % Messrauschen ist zeitabhaengig -> einmal gemittelt als konstante Matrix
     t_all = unique([t_bio; t_glc; t_o2]);
+    param_namen = {'mumax', 'KS', 'YXS', 'YXO', 'KLa'};
 else
     nx = 2; np = 3;
     x0 = [y_bio(1); y_glc(1)];
-    C_mean = diag([mean(var_bio), mean(var_glc)]); % Messrauschen ist zeitabhaengig -> einmal gemittelt als konstante Matrix
     t_all = unique([t_bio; t_glc]);
+    param_namen = {'mumax', 'KS', 'YXS'};
 end
-
-%% 2. Kovarianzmatrix der Messung (invC)
-invC   = inv(C_mean);
 
 %% 3. Erweiterte Simulation (Zustaende + Sensitivitaeten)
 x0_ext = [x0; zeros(nx * np, 1)];  % XP(0) = 0
 
-options = odeset('RelTol', 1e-6, 'AbsTol', 1e-8);
-[~, X_ext] = ode15s(@(t, x) Modell1_XP_Monod(t, nx, np, x, p_opt, withOxygen), ...
+options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
+[~, X_ext] = ode15s(@(t, x) Modell1_XP_MonodO2(t, nx, np, x, p_opt, withOxygen, DOTstern), ...
                      t_all, x0_ext, options);
 
 %% 4. FIM berechnen
@@ -67,14 +65,12 @@ FM = zeros(np, np);
 
 for k = 1:numel(iBio)
     XP_k = reshape(X_ext(iBio(k), nx+1:end), nx, np);
-
     s = XP_k(1, :).';              % Sensitivität Biomasse
     FM = FM + (s * s.') / var_bio(k);
 end
 
 for k = 1:numel(iGlc)
     XP_k = reshape(X_ext(iGlc(k), nx+1:end), nx, np);
-
     s = XP_k(2, :).';              % Sensitivität Glucose
     FM = FM + (s * s.') / var_glc(k);
 end
@@ -99,11 +95,6 @@ CV = FM \ eye(np);
 
 fprintf('\n--- Parameterunsicherheiten ---\n');
 fprintf('%-8s  %-10s  %-12s  %-14s\n', 'Param', 'Wert', 'StdAbw', 'Rel. Unsich.');
-if withOxygen
-    param_namen = {'mumax', 'KS', 'YXS', 'YXO', 'KLa'};
-else
-    param_namen = {'mumax', 'KS', 'YXS'};
-end
 for i = 1:np
     fprintf('%-8s  %-10.4f  %-12.4f  %-14.1f%%\n', ...
         param_namen{i}, p_opt(i), StdDev(i), relStdDev(i)*100);

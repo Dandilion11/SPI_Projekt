@@ -11,9 +11,9 @@ cX    = x(1);  % Biomasse             [g/L] (CDW)
 cGlc  = x(2);  % Glucose              [g/L]
 cAm   = x(3);  % Ammonium             [g/L]
 cBase = x(4);  % zugegebene Base      [mol/L bzw. L-Aequivalent]
-cO2   = x(5);  % geloester Sauerstoff [g/L]   (FIX: vorher faelschlich x(3))
+cO2   = x(5);  % gelöster Sauerstoff [g/L]   
 
-cO2stern = DOTstern;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
+% Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
 cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
 H       = 100/cO2_sat; 
 %% Parameter
@@ -43,15 +43,6 @@ dxdt(1) =  mu * cX;                                 % Biomasse
 dxdt(2) = -(1 / YXS) * mu * cX;                     % Glucose
 dxdt(3) = -YAmX * mu * cX;                          % Ammonium
 dxdt(4) =  YBam * YAmX * mu * cX;                   % Base
-dxdt(5) =  KLa * (cO2stern - cO2) - H * 1/YXO * mu * cX; % O2 (nutzt jetzt cO2 = x(5))
-
-% %% DGL ALT -> hat sich eigentlich nichts geändert
-% 
-% dxdt = zeros(5, 1);
-% dxdt(1) = mu * cX; % Biomasse
-% dxdt(2) = - (1 / YXS) * mu * cX; % Glucose
-% dxdt(3) = - YAmX * mu * cX; % Ammonium
-% dxdt(4) = YBam * YAmX * mu * cX; %Base
-% dxdt(5) =  KLa * (cO2stern-cO2) - 1/YXO * mu * cX;  % O2-Eintrag - O2-Verbrauch (Enfors Gl. 6.15) -> O2 Eintrag durch den Rührer, O2 Verbrauch durch das Wachstum der Biomasse 
+dxdt(5) =  KLa * (DOTstern - cO2) - H * 1/YXO * mu * cX; % O2 
 
 end
