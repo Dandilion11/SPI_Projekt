@@ -17,7 +17,7 @@ sg_path = fullfile(fileparts(pwd), 'STRIKE-GOLDD');
 model_path = fullfile(fileparts(pwd), 'Modelle');
 
 
-%% STRIKE-GOLDD zum MATLAB-Pfad hinzufügen
+% STRIKE-GOLDD zum MATLAB-Pfad hinzufügen
 if exist(sg_path, 'dir')
     addpath(genpath(sg_path));   % genpath fügt auch Unterordner hinzu
     fprintf('[OK] STRIKE-GOLDD gefunden:\n     %s\n', sg_path);
@@ -26,7 +26,7 @@ else
            'Erwartete Struktur: SPI_Projekt/STRIKE-GOLDD/strike_goldd.m\n'], sg_path);
 end
 
-%% Modell-Ordner zum MATLAB-Pfad hinzufügen
+% Modell-Ordner zum MATLAB-Pfad hinzufügen
 if exist(model_path, 'dir')
     addpath(model_path);
     fprintf('[OK] Modell-Ordner gefunden:\n     %s\n', model_path);
