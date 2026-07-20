@@ -106,7 +106,8 @@ h = [mX/V;      % cX
      mPh/V;     % cPO4
      mEt/V;     % cEt
      mB;        % mB
-     V];        % Volumen
+     V;        % Volumen
+     DOT];      % DOT (wird gemessen -> macht KLa & YXO identifizierbar)
 
 % Als .mat speichern
 mat_filename = fullfile(model_path, 'SF_Modell3_YBA.mat');
