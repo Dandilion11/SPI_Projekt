@@ -1,4 +1,4 @@
-function dxdt_ext = Modell1_XP_Monod(t,nx, np, x_ext, p, withOxygen, KLaConst)
+function dxdt_ext = Modell1_XP_Monod(t,nx, np, x_ext, p, withOxygen, DOTstern)
 % Erweiterte DGL: Zustände + Sensitivitätsmatrix XP
 % x_ext = [cX; cGlc; XP(:)] mit XP
 
@@ -11,7 +11,7 @@ XP = reshape(x_ext(nx+1:end), nx, np);
 x = max(x, 0);
 
 % Modellgleichung
-dxdt = Modell1(t, x, p,3, withOxygen, KLaConst);
+dxdt = Modell1(t, x, p,3, withOxygen, DOTstern);
 
 % Jacobi-Matrizen
 if withOxygen

@@ -4,7 +4,7 @@ clear; clc; close all;
 
 %% 1. Daten laden
 scriptDir = pwd;
-loadPath_processed  = fullfile(scriptDir, 'Matlab_Code', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
+loadPath_processed  = fullfile(scriptDir,'..', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
 load(loadPath_processed);
 
 projectRoot = pwd;
@@ -13,62 +13,85 @@ addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 
 % Validierungsdaten extrahieren
 Data = ValData;
-t_mes  = Data.Biomasse.t;
-y_bio  = Data.Biomasse.y;   var_bio = Data.Biomasse.var;
-y_glc  = Data.Glucose.y;    var_glc = Data.Glucose.var;
-y_am   = Data.Ammonium.y;   var_am  = Data.Ammonium.var;
-y_ba   = Data.Base.y;       var_ba  = Data.Base.var;
-y_o2   = Data.O2.y;         var_o2  = Data.O2.var;
+t_bio = Data.Biomasse.t(:);   y_bio = Data.Biomasse.y(:);   var_bio = Data.Biomasse.var(:);
+t_glc = Data.Glucose.t(:);    y_glc = Data.Glucose.y(:);    var_glc = Data.Glucose.var(:);
+t_am  = Data.Ammonium.t(:);   y_am  = Data.Ammonium.y(:);   var_am  = Data.Ammonium.var(:);
+t_ba  = Data.Base.t(:);       y_ba  = Data.Base.y(:);       var_ba  = Data.Base.var(:);
+t_o2  = Data.O2.t(:);         y_o2  = Data.O2.y(:);         var_o2  = Data.O2.var(:);
+
+t_mes = unique([t_bio; t_glc; t_am; t_ba; t_o2]);
 
 % Startwerte für 5 Zustände
 x0 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
 
 % Optimierte Parameter aus PI
-% Reihenfolge: [mumax, KS, YXS, YBam, YAmX, YXO, KLa, cO2stern]
-p_opt_m2 = [0.3795; 5.0000; 0.1473; 1.2283; 0.0554; 2.6039; 288.1887; 76.8628]; 
+% Reihenfolge: [mumax, KS, YXS, YBam, YAmX, YXO, KLa]
+loadPath_processed  = fullfile(scriptDir, '..', 'Daten', 'p_opt_Modell2.mat');
+p_opt = (load(loadPath_processed));
+p_opt_m2 = p_opt.p_opt_m2;
 
 kinetic = 3; % Monod
 nx = 5; 
-np = 8;
+np = 7;
 
 %% 2. Kovarianzmatrix der Messung (invC)
 % Messrauschen gemittelt als konstante 5x5 Diagonalmatrix
 C_mean = diag([mean(var_bio), mean(var_glc), mean(var_am), mean(var_ba), mean(var_o2)]);
 invC   = inv(C_mean);
+DOTstern = max(y_o2);
 
 %% 3. Erweiterte Simulation (Zustände + Sensitivitäten)
 x0_ext = [x0; zeros(nx * np, 1)];  
 
 options = odeset('RelTol', 1e-6, 'AbsTol', 1e-8);
-[~, X_ext] = ode15s(@(t, x) Modell2_XP(t, x, p_opt_m2, kinetic), t_mes, x0_ext, options);
+[~, X_ext] = ode15s(@(t, x) Modell2_XP_Monod(t, x, p_opt_m2, DOTstern), t_mes, x0_ext, options);
 
 %% 4. FIM berechnen
 FM = zeros(np, np);
 
-dhdx = eye(nx);      
-dhdp_direct = zeros(nx, np);
+t_list   = {t_bio, t_glc, t_am, t_ba, t_o2};
+var_list = {var_bio, var_glc, var_am, var_ba, var_o2};
 
-for k = 1:length(t_mes)
-    XP_k = reshape(X_ext(k, nx+1:end), nx, np);
-    dhdp = dhdx * XP_k + dhdp_direct;
+% Zustandsindex der jeweiligen Messgröße:
+% Biomasse -> x(1), Glucose -> x(2), Ammonium -> x(3), Base -> x(4), O2 -> x(5)
+state_idx = [1, 2, 3, 4, 5];
 
-    C_k   = diag([var_bio(k), var_glc(k), var_am(k), var_ba(k), var_o2(k)]);
-    invC_k = inv(C_k);
+for m = 1:nx
+    t_m   = t_list{m};
+    var_m = var_list{m};
 
-    FM = FM + dhdp' * invC_k * dhdp;
+    [tf, idx_mes] = ismember(t_m, t_mes);
+
+    if any(~tf)
+        error('Nicht alle Messzeitpunkte wurden in t_mes gefunden.');
+    end
+
+    for j = 1:numel(t_m)
+        k = idx_mes(j);
+
+        XP_k = reshape(X_ext(k, nx+1:end), nx, np);
+
+        % Sensitivität der gemessenen Größe nach Parametern
+        s = XP_k(state_idx(m), :).';   % np x 1
+
+        % FIM-Beitrag: s*s' / Varianz
+        FM = FM + (s * s.') / var_m(j);
+    end
 end
 
 fprintf('Fisher-Informationsmatrix FM (Modell 2):\n');
 disp(FM);
+fprintf('Rang(FM) = %d von %d\n', rank(FM), np);
+fprintf('rcond(FM) = %.3e\n', rcond(FM));
 
 %% 5. Kovarianzmatrix und Parameteranalyse
-CV = inv(FM);
+CV = FM \ eye(np);
 
 [Corr, StdDev, relStdDev, EW, EV, CN] = Parameteranalyse(CV, p_opt_m2);
 
 fprintf('\n--- Parameterunsicherheiten (Modell 2) ---\n');
 fprintf('%-8s  %-10s  %-12s  %-14s\n', 'Param', 'Wert', 'StdAbw', 'Rel. Unsich.');
-param_namen = {'mumax', 'KS', 'YXS', 'YBam', 'YAmX', 'YXO', 'KLa', 'cO2stern'};
+param_namen = {'mumax', 'KS', 'YXS', 'YBam', 'YAmX', 'YXO', 'KLa'};
 for i = 1:np
     fprintf('%-8s  %-10.4f  %-12.4f  %-14.1f%%\n', ...
         param_namen{i}, p_opt_m2(i), StdDev(i), relStdDev(i)*100);
