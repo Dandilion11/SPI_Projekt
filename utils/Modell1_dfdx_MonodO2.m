@@ -1,4 +1,4 @@
-function dfdx = Modell1_dfdx_MonodO2(x, p, KLaConst)
+function dfdx = Modell1_dfdx_MonodO2(x, p)
 % Jacobimatrix df/dx für Modell1 (Monod, mit O2)
 % Prinzip Sensitivitäten für nichtlineare Modelle: df/dx * inv(C) + df/dp
 % im Gegensatz zu Übung 5 wird hier eine 3x5 matrix rauskommen, weil ohne
@@ -13,9 +13,6 @@ mumax = p(1);
 KS    = p(2);
 YXS   = p(3);
 YXO = p(4);
-
-if KLaConst
-    KLa = 64.3729;
 KLa = p(5);
 
 mu        = mumax * cGlc / (KS + cGlc);

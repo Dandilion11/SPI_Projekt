@@ -12,7 +12,7 @@ addpath(fullfile(projectRoot,'..','utils'),'-begin');
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 
 % Validierungsdaten extrahieren
-Data = ValData;
+Data = TrainData;
 t_bio = Data.Biomasse.t(:);   y_bio = Data.Biomasse.y(:);   var_bio = Data.Biomasse.var(:);
 t_glc = Data.Glucose.t(:);    y_glc = Data.Glucose.y(:);    var_glc = Data.Glucose.var(:);
 t_am  = Data.Ammonium.t(:);   y_am  = Data.Ammonium.y(:);   var_am  = Data.Ammonium.var(:);

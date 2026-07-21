@@ -26,20 +26,20 @@ y_bio2 = ValData.Biomasse.y;  var_bio2 = ValData.Biomasse.var;
 y_glc2 = ValData.Glucose.y;   var_glc2 = ValData.Glucose.var;
 y_am   = ValData.Ammonium.y;  var_am   = ValData.Ammonium.var;
 y_ba   = ValData.Base.y;      var_ba   = ValData.Base.var;
-y_o22  = ValData.O2.y;        var_o22  = ValData.O2.var;
- 
+y_o2  = ValData.O2.y;        var_o2  = ValData.O2.var;
+DOTstern = max(y_o2);
 np2    = 7;
 lb2    = [0.01, 0.01, 0.01, 0.01, 0.001, 0.01,   1];
 ub2    = [1.0,  5.0,  1.0,  10,   1.0,   5.0, 1000];
 namen2 = {'mumax','KS','YXS','YBam','YAmX','YXO','KLa'};
  
-x0_m2 = [y_bio2(1); y_glc2(1); y_am(1); y_ba(1); y_o22(1)];
+x0_m2 = [y_bio2(1); y_glc2(1); y_am(1); y_ba(1); y_o2(1)];
  
 % M2.3 Referenzsimulation mit p_opt_m2 (je Zeitgitter einmal)
 kinetic    = 3;
 opts_ode = odeset('RelTol',1e-6,'AbsTol',1e-8);
-[~, Xoff] = ode15s(@(t,x) Modell2(t,x,p_opt_m2,kinetic), t_off, x0_m2, opts_ode);
-[~, Xon ] = ode15s(@(t,x) Modell2(t,x,p_opt_m2,kinetic), t_on , x0_m2, opts_ode);
+[~, Xoff] = ode15s(@(t,x) Modell2(t,x,p_opt_m2,kinetic, DOTstern), t_off, x0_m2, opts_ode);
+[~, Xon ] = ode15s(@(t,x) Modell2(t,x,p_opt_m2,kinetic, DOTstern), t_on , x0_m2, opts_ode);
 y_bio_ref2 = Xoff(:,1);
 y_glc_ref2 = Xoff(:,2);
 y_am_ref   = Xoff(:,3);
@@ -51,7 +51,7 @@ K2        = 300;
 p_boot_m2 = zeros(K2, np2);
 rng(42);
 opts_opt = optimoptions('fmincon','Display','off','Algorithm','sqp');
-fprintf('\nBootstrap Modell2 (%d Laeufe)...\n', K2);
+fprintf('\nBootstrap Modell2 (%d Läufe)...\n', K2);
  
 for k = 1:K2
     % --- Pseudo-Messdaten erzeugen (Referenz + Messrauschen) ---
@@ -59,12 +59,12 @@ for k = 1:K2
     yg  = y_glc_ref2 + sqrt(var_glc2(:)) .* randn(size(y_glc_ref2));
     ya  = y_am_ref   + sqrt(var_am(:))   .* randn(size(y_am_ref));
     yba = y_ba_ref   + sqrt(var_ba(:))   .* randn(size(y_ba_ref));
-    yo  = y_o2_ref2  + sqrt(var_o22(:))  .* randn(size(y_o2_ref2));
+    yo  = y_o2_ref2  + sqrt(var_o2(:))  .* randn(size(y_o2_ref2));
  
     x0k = max([yb(1); yg(1); ya(1); yba(1); yo(1)], 1e-6);
  
     % --- Parameterschaetzung auf Pseudo-Daten (Start = p_opt_m2) ---
-    obj_k = @(p) boot_wls_m2(p, x0k, t_off, t_on, yb, yg, ya, yba, yo, var_bio2, var_glc2, var_am, var_ba, var_o22, kinetic);
+    obj_k = @(p) boot_wls_m2(p, x0k, t_off, t_on, yb, yg, ya, yba, yo, var_bio2, var_glc2, var_am, var_ba, var_o2, kinetic);
     try
         p_boot_m2(k,:) = fmincon(obj_k, p_opt_m2, [],[],[],[], lb2, ub2, [], opts_opt);
     catch
@@ -74,7 +74,7 @@ for k = 1:K2
     if mod(k,50)==0, fprintf('  %d/%d\n',k,K2); end
 end
  
-% M2.5 Ungueltige Laeufe entfernen
+% M2.5 Ungueltige Läufe entfernen
 valid2    = ~any(isnan(p_boot_m2),2);
 p_boot_m2 = p_boot_m2(valid2,:);
 fprintf('Gueltige Laeufe: %d/%d\n', sum(valid2), K2);
@@ -125,9 +125,10 @@ function J = boot_wls_m2(p, x0, t_off, t_on, y_bio, y_glc, y_am, y_ba, y_o2, v_b
     % Zwei Integrationen: Offline-Groessen (Biomasse/Glucose/Ammonium) auf
     % t_off, Online-Groessen (Base/O2) auf t_on
     opts = odeset('RelTol',1e-4,'AbsTol',1e-6);
+    DOTstern = max(y_o2);
     try
-        [~,Xo] = ode15s(@(t,x) Modell2(t,x,p,kin), t_off, x0, opts);
-        [~,Xn] = ode15s(@(t,x) Modell2(t,x,p,kin), t_on , x0, opts);
+        [~,Xo] = ode15s(@(t,x) Modell2(t,x,p,kin, DOTstern), t_off, x0, opts);
+        [~,Xn] = ode15s(@(t,x) Modell2(t,x,p,kin, DOTstern), t_on , x0, opts);
         if size(Xo,1) ~= numel(t_off) || size(Xn,1) ~= numel(t_on)
             J = 1e6; return;
         end
@@ -142,16 +143,3 @@ function J = boot_wls_m2(p, x0, t_off, t_on, y_bio, y_glc, y_am, y_ba, y_o2, v_b
     end
 end
 
-
-
-% function J = boot_wls(p, x0, t, y_bio, y_glc, v_bio, v_glc, kin, wO2)
-%     try
-%         [~,X] = ode15s(@(t,x) Modell1(t,x,p,kin,wO2), t, x0, ...
-%                        odeset('RelTol',1e-4,'AbsTol',1e-6));
-%         J = sum(((X(:,1)-y_bio(:)).^2)./v_bio(:)) + ...
-%             sum(((X(:,2)-y_glc(:)).^2)./v_glc(:));
-%         if ~isfinite(J), J = 1e6; end
-%     catch
-%         J = 1e6;
-%     end
-% end
