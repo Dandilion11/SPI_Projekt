@@ -51,7 +51,7 @@ withOxygen = true;
 % Parametervektor [mu_max; K_S; Y_XS]
 p0  = [0.3;  0.5;  0.15];    % Startwerte
 pLB = [0.01; 0.01; 0.01];    % untere Schranken
-pUB = [1.0;  5.0;  1.0];     % obere Schranken (K_S oben gelockert)
+pUB = [1.0;  500.0;  1.0];     % obere Schranken (K_S oben gelockert)
 
 DOTstern = 0;
 if withOxygen

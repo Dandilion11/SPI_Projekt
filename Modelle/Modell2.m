@@ -28,7 +28,7 @@ KLa   = p(7);  % Aus Enfors Gl. 6.6 Volumetrischer Sauerstofftransferkoeffizient
 
 %% Wachstumsrate
 if kinetic == 1
-    n = p(9);
+    n = p(8);
     mu = mumax * (cGlc^n / (cGlc^n + KS));
 elseif kinetic == 2
     mu = mumax * (1 - exp(-cGlc / KS));
