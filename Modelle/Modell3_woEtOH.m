@@ -65,7 +65,7 @@ uout = 0;
 
 %% Massenbilanzen (Krämer & King 2017, Gl. 7–15)
 dxdt = zeros(7, 1);
-dxdt(1) = uGlc + uAm + uPh + uBase + uAcid - uout;                      % V
+dxdt(1) = uGlc + uAm + uPh + uBase + uAcid - uout;              % V
 dxdt(2) = (rX) * mX;                                            % mX
 dxdt(3) = (-1/YXS*rX)*mX + cGlc_in*uGlc - uout*cGlc;            % mGlc
 dxdt(4) = -YAmX*rX*mX + cAm_in*uAm - uout*cAm;                  % mAm
