@@ -5,38 +5,36 @@ clear; clc; close all;
 %% 1. Laden der Ergebnisse aus der Parameteridentifikation (PI)
 % Benötigt: p_opt_m3, x0_m3, invC (Messunsicherheit)
 % Hier Platzhalter bis PI von Modell 3 vorliegt:
-p_opt_m3 = zeros(12, 1); % Modell 3 hat 12 Basis-Parameter
-x0_m3 = zeros(8, 1);     % Modell 3 hat 8 Zustände
+load(fullfile(pwd,'..','Daten','p_opt_Modell3_woEtOH.mat'));
+load(fullfile(pwd,'..','Daten','Daten_Processed','Processed_FedBatch_Modell3.mat'))
+p_opt_m3 = p_opt;
+x0_m3    = TrainData.x0;  
 
 %% 2. Konfiguration der Versuchsplanung (VP)
-VP.t = 0:1:20;          % Zeitraster der Stellgrößenänderung und Probenahme (z.B. 20h)
+invC = eye(6);
+VP.t = 0:1:20;                 % Zeitraster [h]
+tu   = VP.t;                   % Stellgroessenraster identisch
 VP.x0 = x0_m3;
-VP.p = p_opt_m3;
+VP.p  = p_opt_m3;
+VP.DOTstern = max(TrainData.O2.y);
 
-% Initialisierung der u-Matrix für Modell 3 (10 Zeilen laut Modell3.m)
-% Zeile 1: Zeitvektor
-% Zeile 6: qGlc (Glucose-Feedrate) -> primäre Optimierungsvariable
-% Zeile 7: cGlcF (Konzentration im Feed, ca. 450 g/L)
-tu = VP.t;
-u0_glc = 0.01 * ones(size(tu)); % Startschätzung für den Feed-Verlauf [L/h]
+u0_glc = 0.01 * ones(size(tu));    % Startschaetzung Feed [L/h]
 
 VP.u = zeros(10, length(tu));
 VP.u(1, :) = tu;
 VP.u(6, :) = u0_glc;
-VP.u(7, :) = 450; % cGlcF konstant
+VP.u(7, :) = 450;              % cGlcF konstant
 
 %% 3. Grenzwertdefinitionen (Beschränkungen)
 VP.CONS.umin = 0 * ones(size(u0_glc));
 VP.CONS.umax = 0.05 * ones(size(u0_glc)); % Beispielgrenze für Pumpe
 
-% Zustandsschranken [mX; mGlc; mNH4; mPO4; mEt; mB; V; DOT]
-VP.CONS.xmin = [0; 0; 0; 0; 0; 0; 0.5; 0]; 
-VP.CONS.xmax = [inf; inf; inf; inf; inf; inf; 2.0; inf]; % Reaktorvolumengrenze z.B. 2L
-
+% Zustandsschranken [V; mX; mGlc; mAm; mPh; mB; DOT]
+VP.CONS.xmin = [0.5; 0; 0; 0; 0; 0; 0];
+VP.CONS.xmax = [2.0; inf; inf; inf; inf; inf; inf];
 %% 4. Durchführung OVP
 % Berechnung der initialen FIM des Vorversuchs (FM_old)
-invC = eye(7); % Platzhalter für 7 Messgrößen aus Modell3_mgl.m
-FM_old = zeros(length(p_opt_m3)); % Falls Vorversuchsdaten einfließen
+FM_old = zeros(numel(p_opt_m3));
 
 fprintf('Starte Optimale Versuchsplanung für Modell 3...\n');
 OVP_ERGEBNIS = OVP_Modell3(VP, FM_old, invC);
@@ -49,7 +47,7 @@ ylabel('Optimaler Glucose-Feed q_{Glc} [L/h]');
 grid on;
 
 subplot(2,1,2)
-plot(OVP_ERGEBNIS.t, OVP_ERGEBNIS.x(7,:), 'LineWidth', 2); % Reaktorvolumen
+plot(OVP_ERGEBNIS.t, OVP_ERGEBNIS.x(1,:), 'LineWidth', 2); % Reaktorvolumen
 ylabel('Volumenverlauf V [L]');
 xlabel('Zeit [h]');
 grid on;

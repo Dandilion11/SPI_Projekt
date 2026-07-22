@@ -17,7 +17,7 @@ x0   = Data.x0;                % [V; mX; mGlc; mAm; mPh; mB; DOT]
 namen = {'mumax','KS','YXS', 'YAmX','YPhX','YB_Am','KLa','YXO'};
 p0 =    [0.30,   0.50, 0.15,  0.05,  0.02,  1.0,     200,  1.0];
 pLB =   [0.01,   0.01, 0.05, 0.001, 0.001,  0.1,     10,   0.1];
-pUB =   [1.00,   5.00, 1.00, 1.000, 1.000,  5.0,     800,  5.0];
+pUB =   [1.00,   500.00, 1.00, 1.000, 1.000,  5.0,     800,  5.0];
 
 
 % 2. Parameteridentifikation (WLS)
@@ -41,7 +41,7 @@ end
 
 scriptDir   = pwd;
 saveDir = fullfile(scriptDir, '..', 'Daten');
-save(fullfile(saveDir, 'p_opt_Modell3_woEthO2.mat'), 'p_opt');
+save(fullfile(saveDir, 'p_opt_Modell3_woEtOH.mat'), 'p_opt');
 
 %% 4. Visualisierung
 t_start = u(1,1);

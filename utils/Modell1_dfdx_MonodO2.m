@@ -9,6 +9,8 @@ H       = 100 / cO2_sat;
 
 cX   = x(1);
 cGlc = x(2);
+cO2 = x(3);
+
 mumax = p(1);
 KS    = p(2);
 YXS   = p(3);
