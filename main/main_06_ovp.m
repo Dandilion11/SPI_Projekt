@@ -11,7 +11,10 @@ p_opt_m3 = p_opt;
 x0_m3    = TrainData.x0;  
 
 %% 2. Konfiguration der Versuchsplanung (VP)
-invC = eye(6);
+C = diag([mean(TrainData.Biomasse.var), mean(TrainData.Glucose.var), ...
+          mean(TrainData.Ammonium.var), mean(TrainData.Phosphat.var), ...
+          mean(TrainData.Base.var),     mean(TrainData.O2.var)]);
+invC = inv(C);
 VP.t = 0:1:20;                 % Zeitraster [h]
 tu   = VP.t;                   % Stellgroessenraster identisch
 VP.x0 = x0_m3;
@@ -32,13 +35,33 @@ VP.CONS.umax = 0.05 * ones(size(u0_glc)); % Beispielgrenze für Pumpe
 % Zustandsschranken [V; mX; mGlc; mAm; mPh; mB; DOT]
 VP.CONS.xmin = [0.5; 0; 0; 0; 0; 0; 0];
 VP.CONS.xmax = [2.0; inf; inf; inf; inf; inf; inf];
+
+
 %% 4. Durchführung OVP
 % Berechnung der initialen FIM des Vorversuchs (FM_old)
-FM_old = zeros(numel(p_opt_m3));
+[FM_old, ~, ~] = simulation_fim_modell3(VP.t, VP.x0, VP.u, VP.p, invC, VP.DOTstern);
+
+FM_norm_alt = diag(VP.p) * FM_old * diag(VP.p);
+CV_alt      = inv(FM_norm_alt);
+[Corr, StdDev, relStdDev, ~, ~, CN] = Parameteranalyse(CV_alt, VP.p);
+fprintf('Konditionszahl vor OVP: %.1f\n', CN);
+
+figure; plot_gaussian_ellipsoid(VP.p(1:3), CV_alt(1:3,1:3), 1);
+title('Parameterunsicherheit vor OVP');
 
 fprintf('Starte Optimale Versuchsplanung für Modell 3...\n');
 OVP_ERGEBNIS = OVP_Modell3(VP, FM_old, invC);
 
+[FM_neu, ~, ~] = simulation_fim_modell3(VP.t, VP.x0, ...
+                     OVP_ERGEBNIS.u, VP.p, invC, VP.DOTstern);
+
+FM_total      = FM_old + FM_neu;
+FM_norm_neu   = diag(VP.p) * FM_total * diag(VP.p);
+CV_neu        = inv(FM_norm_neu);
+[~, StdDev2, relStdDev2, ~, ~, CN2] = Parameteranalyse(CV_neu, VP.p);
+
+figure; plot_gaussian_ellipsoid(VP.p(1:3), CV_neu(1:3,1:3), 1);
+title('Erwartete Parameterunsicherheit nach OVP');
 %% 5. Visualisierung des optimalen Feed-Profils
 figure('Name', 'OVP Ergebnis Modell 3');
 subplot(2,1,1)
