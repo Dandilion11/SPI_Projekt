@@ -7,34 +7,39 @@ clear; clc; close all;
 % Hier Platzhalter bis PI von Modell 3 vorliegt:
 load(fullfile(pwd,'..','Daten','p_opt_Modell3_woEtOH.mat'));
 load(fullfile(pwd,'..','Daten','Daten_Processed','Processed_FedBatch_Modell3.mat'))
+addpath (fullfile(pwd,'..','\utils'))
 p_opt_m3 = p_opt;
 x0_m3    = TrainData.x0;  
 
 %% 2. Konfiguration der Versuchsplanung (VP)
-C = diag([mean(TrainData.Biomasse.var), mean(TrainData.Glucose.var), ...
-          mean(TrainData.Ammonium.var), mean(TrainData.Phosphat.var), ...
-          mean(TrainData.Base.var),     mean(TrainData.O2.var)]);
+ab = [0.02 0.015; 0.06 0.25; 0.06 0.01; 0.07 0.01; 0.01 10; 0.02 0.5];
+c_nom = [5; 2; 0.5; 0.2; 50; 60]; % repräsentative Konz. [g/L, g/L, g/L, g/L, mL, %]
+sigma_nom = (ab(:,1).*c_nom + ab(:,2)).^2;
+C    = diag(sigma_nom);
 invC = inv(C);
-VP.t = 0:1:20;                 % Zeitraster [h]
-tu   = VP.t;                   % Stellgroessenraster identisch
+VP.t = 0:0.5:20; % 41 Punkte, 0.5h Auflösung
+tu   = VP.t;                  % Stellgroessenraster identisch
 VP.x0 = x0_m3;
 VP.p  = p_opt_m3;
 VP.DOTstern = max(TrainData.O2.y);
 
-u0_glc = 0.01 * ones(size(tu));    % Startschaetzung Feed [L/h]
+u0_glc  = 0.05 * ones(size(tu));   % realistischerer Startwert
+u_am_fix = 0.01 * ones(size(tu));  % proportionaler Am-Feed
+u_ph_fix = 0.002 * ones(size(tu)); % proportionaler Ph-Feed
 
 VP.u = zeros(10, length(tu));
 VP.u(1, :) = tu;
-VP.u(6, :) = u0_glc;
-VP.u(7, :) = 450;              % cGlcF konstant
+VP.u(2, :) = u_am_fix;  VP.u(3, :) = 80;   % Am-Feed [L/h], [g/L]
+VP.u(4, :) = u_ph_fix;  VP.u(5, :) = 40;   % Ph-Feed [L/h], [g/L]
+VP.u(6, :) = u0_glc;    VP.u(7, :) = 450;  % Glc-Feed [L/h], [g/L]
 
 %% 3. Grenzwertdefinitionen (Beschränkungen)
-VP.CONS.umin = 0 * ones(size(u0_glc));
-VP.CONS.umax = 0.05 * ones(size(u0_glc)); % Beispielgrenze für Pumpe
+VP.CONS.umin = zeros(size(u0_glc));
+VP.CONS.umax = 0.20 * ones(size(u0_glc)); % max Feed [L/h]
 
 % Zustandsschranken [V; mX; mGlc; mAm; mPh; mB; DOT]
 VP.CONS.xmin = [0.5; 0; 0; 0; 0; 0; 0];
-VP.CONS.xmax = [2.0; inf; inf; inf; inf; inf; inf];
+VP.CONS.xmax = [14.0; inf; inf; inf; inf; inf; 100];
 
 
 %% 4. Durchführung OVP
