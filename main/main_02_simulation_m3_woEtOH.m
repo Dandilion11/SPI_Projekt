@@ -36,7 +36,7 @@ assert(size(Data.u,1) >= 10, 'u-Matrix hat zu wenige Zeilen (%d)', size(Data.u,1
 DOTstern = max(Data.O2.y);
 
 options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3]  = ode45(@(t, x) Modell3_Jannis(t, x, u, p_guess, DOTstern), t_sim, x0, options);
+[~, X3]  = ode15s(@(t, x) Modell3_woEtOH(t, x, u, p_guess, DOTstern), t_sim, x0, options);
 
 V    = X3(:,1);
 cX   = X3(:,2)./V;   % Biomasse [g/L]

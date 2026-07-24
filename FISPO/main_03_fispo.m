@@ -292,6 +292,4 @@ end
 
 
 
-
-
 fprintf('\n=== Alle FISPO-Analysen abgeschlossen ===\n');

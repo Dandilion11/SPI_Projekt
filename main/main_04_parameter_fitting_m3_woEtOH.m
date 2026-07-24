@@ -15,14 +15,15 @@ x0   = Data.x0;                % [V; mX; mGlc; mAm; mPh; mB; DOT]
 % 1. Anfangswerte und Parameter
 %Ausgangslage
 namen = {'mumax','KS','YXS', 'YAmX','YPhX','YB_Am','KLa','YXO'};
-p0 =    [0.30,   0.50, 0.15,  0.05,  0.02,  1.0,     200,  1.0];
+p0 =    [0.30,   0.50, 0.15,  0.05,  0.02,  1.0,     200,  1.0]; 
 pLB =   [0.01,   0.01, 0.05, 0.001, 0.001,  0.1,     10,   0.1];
-pUB =   [1.00,   500.00, 1.00, 1.000, 1.000,  5.0,     800,  5.0];
+pUB =   [1.00,   500.00, 1.00, 1.000, 1.000,  5.0,     800,  5.0]; %KS 500? Wert Nimmt Wert von 15 an-> Viel
 
 
 % 2. Parameteridentifikation (WLS)
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                        'MaxFunctionEvaluations', 5000, ...
+                       'FiniteDifferenceType', 'central', ...       %central umgestellt -> längeres Fitting
                        'FiniteDifferenceStepSize', 1e-6, ...
                        'OptimalityTolerance', 1e-8, ...
                        'StepTolerance', 1e-10);
@@ -50,7 +51,7 @@ t_sim   = linspace(t_start, t_end, 300);
 
 DOTstern = max(Data.O2.y);
 options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3] = ode45(@(t,x) Modell3_woEtOH(t,x,u,p_opt,DOTstern), t_sim, x0, options_ode);
+[~, X3] = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p_opt,DOTstern), t_sim, x0, options_ode);
 
 V    = X3(:,1);
 cX   = X3(:,2)./V;   cGlc = X3(:,3)./V;   cAm = X3(:,4)./V;
@@ -93,7 +94,7 @@ function J = wls_error_m3(p, x0, u, Data)
     if t_all(1) > t0, t_all = [t0; t_all]; end
 
     % Einmalige Simulation
-    opts = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
+    opts = odeset('RelTol', 1e-7, 'AbsTol', 1e-9);
     try
         [~, X] = ode45(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
     catch
