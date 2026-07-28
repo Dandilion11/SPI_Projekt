@@ -35,12 +35,12 @@ function D = aufbereiten(Mess, ab)
 
 M = Mess.Messdaten;
 % Messgroessen einlesen (Zeit in h, Wert in g/L bzw. % bei O2)
-D.Biomasse = messwert(M.Biomasse, ab.Biomasse);
-D.Glucose  = messwert(M.Glucose,  ab.Glucose);
-D.Ammonium = messwert(M.Ammonium, ab.Ammonium);
-D.Phosphat = messwert(M.Phosphat, ab.Phosphat);
-D.O2       = messwert(M.O2,       ab.O2);     % = DOT in %
-D.Base     = messwert(M.BASE,     ab.Base);
+D.Biomasse = messwert(M.Biomasse, ab.Biomasse, "Biomasse");
+D.Glucose  = messwert(M.Glucose,  ab.Glucose, "Glucose");
+D.Ammonium = messwert(M.Ammonium, ab.Ammonium, "Ammonium");
+D.Phosphat = messwert(M.Phosphat, ab.Phosphat, "Phosphat");
+D.O2       = messwert(M.O2,       ab.O2, "O2");     % = DOT in %
+D.Base     = messwert(M.BASE,     ab.Base, "Base");
 
 % Volumen (Dichte 1 kg/L angenommen -> V[L] = Gewicht[kg])
 D.V.t = M.Weight.BatchAge(:);
@@ -64,16 +64,23 @@ D.x0 = [ V0;            % V
          cAm0  * V0;    % mAm
          cPh0  * V0;    % mPh
          0;             % mB  (kumulierte Base startet bei 0)
-         DOT0;]          % DOT
+         DOT0;];          % DOT
 
 end
 
 
-function s = messwert(feld, ab)
+function s = messwert(feld, ab, name)
 % zieht Zeit + Wert raus und rechnet die Messvarianz (a*y+b)^2
 t = feld.BatchAge(:);
 y = feld.Wert(:);
 s.t   = t;
 s.y   = y;
+% if name == "Base"
+%    s.var = feld.Variance(:)/1000; % Umrechnung von mL in L
+% elseif name == "O2"
+%     s.var = feld.Variance(:) * 100;
+% else
+% s.var = feld.Variance(:);
+% end
 s.var = (ab(1).*y + ab(2)).^2;
 end

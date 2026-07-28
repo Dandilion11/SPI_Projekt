@@ -182,7 +182,7 @@ x0_m2 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
 % Parameter: [mu_max; K_S; Y_XS; Y_Bam; Y_AmX; Y_XO; KLa]
 p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  1.0; 200];
 pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;   1];
-pUB_m2 = [10.0; 500.0; 1.0; 10; 1.0; 5.0; 1000]; 
+pUB_m2 = [1.0; 5.0; 1.0; 10; 1.0; 5.0; 1000]; 
 %pUB KS von 5 auf 500 erweitert, weil er bei 5 und 50 an die obere Grenze gestoßen ist
 %mu_max von 1 auf 10 erhöht
 
@@ -195,7 +195,6 @@ obj_fun_m2 = @(p) calculate_wls_error_m2(p, x0_m2, Data, kinetic);
 
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp');
 [p_opt_m2, fval_m2] = fmincon(obj_fun_m2, p0_m2, [], [], [], [], pLB_m2, pUB_m2, [], options);
-
 
 % 3. Ausgabe und Speichern
 fprintf('\n--- Modell2: Parameteridentifikation abgeschlossen ---\n');
@@ -326,15 +325,25 @@ function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
     % Simulationswerte den jeweiligen Messzeitpunkten zuordnen
     [~, iBio] = ismember(t_bio, t_all);
     [~, iGlc] = ismember(t_glc, t_all);
+    % 
+    % err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
+    % err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
+    % J = err_bio + err_glc;
+    % 
+    % if withOxygen
+    %     [~, iO2] = ismember(t_o2, t_all);
+    %     err_o2 = sum(((y_o2 - X_sim(iO2, 3)).^2) ./ var_o2);
+    %     J = J +  err_o2;
+    % end
 
-    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
-    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
+    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio.^2);
+    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc.^2);
     J = err_bio + err_glc;
 
     if withOxygen
         [~, iO2] = ismember(t_o2, t_all);
-        err_o2 = sum(((y_o2 - X_sim(iO2, 3)).^2) ./ var_o2);
-        J = J + err_o2;
+        err_o2 = 1/20 .* sum(((y_o2 - X_sim(iO2, 3)).^2) ./ var_o2.^2);
+        J = J +  err_o2;
     end
 
     if ~isfinite(J); J = 1e6; end
@@ -369,11 +378,18 @@ function J = calculate_wls_error_m2(p, x0, Data, kinetic)
     [~, iBa]  = ismember(t_ba,  t_all);
     [~, iO2]  = ismember(t_o2,  t_all);
 
-    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
-    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
-    err_am  = sum(((y_am  - X_sim(iAm,  3)).^2) ./ var_am);
-    err_ba  = sum(((y_ba  - X_sim(iBa,  4)).^2) ./ var_ba);
-    err_o2  = sum(((y_o2  - X_sim(iO2,  5)).^2) ./ var_o2);
+    % err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
+    % err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
+    % err_am  = sum(((y_am  - X_sim(iAm,  3)).^2) ./ var_am);
+    % err_ba  = sum(((y_ba  - X_sim(iBa,  4)).^2) ./ var_ba);
+    % err_o2  = sum(((y_o2  - X_sim(iO2,  5)).^2) ./ var_o2);
+    % J = err_bio + err_glc + err_am + err_ba + err_o2;
+
+    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio.^2);
+    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc.^2);
+    err_am  = sum(((y_am  - X_sim(iAm,  3)).^2) ./ var_am.^2);
+    err_ba  = sum(((y_ba  - X_sim(iBa,  4)).^2) ./ var_ba.^2);
+    err_o2  = 1/20 .* sum(((y_o2  - X_sim(iO2,  5)).^2) ./ var_o2.^2);
     J = err_bio + err_glc + err_am + err_ba + err_o2;
 
     if ~isfinite(J); J = 1e6; end
