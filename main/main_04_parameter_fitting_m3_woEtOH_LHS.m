@@ -58,8 +58,8 @@ options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
 obj_fun = @(p) wls_error_m3(p, x0, u, DataFit);
 
 % --- Multistart mit Latin Hypercube Sampling ---
-N_lhs = 200;    % Anzahl LHS-Punkte fuer das billige Screening
-K_opt = 6;      % davon die besten -> teurer fmincon-Start
+N_lhs = 100;    %(Zum testen: 30) Anzahl LHS-Punkte fuer das billige Screening
+K_opt = 3;      %(Zum testen: 2)  davon die besten -> teurer fmincon-Start
 d     = numel(p0);
 
 rng(42);                          % reproduzierbar
