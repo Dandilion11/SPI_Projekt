@@ -373,7 +373,9 @@ function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
 
         % Korrekte WLS-Residuen:
         r = (mess.y(:) - y_sim) ./ sqrt(var_i);
-
+        if name == "O2"
+            r = r/20;
+        end
         switch wmode
             case 'sum'
                 contrib = sum(r.^2);
@@ -424,7 +426,7 @@ function J = calculate_wls_error_m2(p, x0, Data, kinetic)
     % 'mean' = jede Messgroesse zaehlt etwa gleich stark
     %
     % Empfehlung bei vielen DOT/Base-Punkten: 'mean'
-    wmode = 'sum';
+    wmode = 'mean';
 
     % Zusatzgewichtung pro Signal:
     % Reihenfolge: [Biomasse Glucose Ammonium Base DOT]
@@ -472,7 +474,9 @@ function J = calculate_wls_error_m2(p, x0, Data, kinetic)
 
         % WLS-Residuen:
         r = (mess.y(:) - y_sim) ./ sqrt(var_i);
-
+        if name == "O2"
+            r = r/10;
+        end
         switch wmode
             case 'sum'
                 contrib = sum(r.^2);
