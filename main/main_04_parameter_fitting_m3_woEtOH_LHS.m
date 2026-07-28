@@ -13,7 +13,7 @@ clear; clc; close all;
 projectRoot = pwd;
 load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_FedBatch_Modell3.mat'));
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
-rehash; clear Modell3
+rehash; clear Modell3_woEtOH
 
 Data = TrainData;
 u    = Data.u;
@@ -283,7 +283,7 @@ function J = wls_error_m3(p, x0, u, Data)
         if divByV
             y_sim = y_sim ./ V(iT);
         end
-        contrib = sum(((mess.y(:) - y_sim).^2) ./ mess.var(:));
+        contrib = sum(((mess.y(:) - y_sim).^2) ./ mess.var(:).^2);
         if strcmp(wmode, 'mean')
             contrib = contrib / max(numel(mess.y), 1);   % durch Punktzahl teilen
         end

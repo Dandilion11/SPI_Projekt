@@ -4,7 +4,7 @@ clear; clc; close all;
 % === Schalter: Varianzquelle ===
 % true  -> Varianz aus dem Messdaten-Struct (feld.Variance)
 % false -> Varianz berechnet ueber (a*y + b)^2
-useMeasuredVar = true;
+useMeasuredVar = false;
 
 % 1. Pfade definieren (dynamisch oder relativ anpassen)
 scriptDir = pwd;

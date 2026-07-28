@@ -5,7 +5,7 @@ clear; clc; close all;
 projectRoot = pwd;
 load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_FedBatch_Modell3.mat'));
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
-rehash; clear Modell3
+rehash; clear Modell3_woEtOH
 
 Data = TrainData;
 u    = Data.u;
@@ -69,65 +69,114 @@ plot_row(6, Data.O2,       t_sim, DOT,  'DOT',       'DOT (%)');
 xlabel('BatchAge (h)');
 
 
-
 function J = wls_error_m3(p, x0, u, Data)
-% WLS über alle 7 Messgrößen. Eine Simulation über das vereinigte
-% Zeitraster, danach Zuordnung zu den jeweiligen Messzeitpunkten.
+% WLS fuer Modell3 ohne Ethanol.
+% Zustaende:
+% x = [V; mX; mGlc; mAm; mPh; mB; DOT]
+%
+% Messgroessen:
+% Biomasse  -> mX/V
+% Glucose   -> mGlc/V
+% Ammonium  -> mAm/V
+% Phosphat  -> mPh/V
+% Base      -> mB
+% DOT       -> DOT
 
-    % Messgrößen sammeln: {t, y, var, Zustandsindex, Divisor}
-    % Divisor: true -> Konzentration = mass/V, false -> direkter Zustand
-    M = { Data.Biomasse, 2, true;   ...
-          Data.Glucose,  3, true;   ...
-          Data.Ammonium, 4, true;   ...
-          Data.Phosphat, 5, true;   ...
-          Data.Base,     6, false;  ...   % mB direkt
-          Data.O2,       7, false;  ...   % DOT direkt
-          };
+    M = { Data.Biomasse, 'Biomasse',  2, true;   ...
+          Data.Glucose,  'Glucose',   3, true;   ...
+          Data.Ammonium, 'Ammonium',  4, true;   ...
+          Data.Phosphat, 'Phosphat',  5, true;   ...
+          Data.Base,     'Base',      6, false;  ...
+          Data.O2,       'DOT',       7, false   };
+
+    % Gewichtungsmodus:
+    % 'sum'  = klassische WLS: jeder Messpunkt zaehlt einzeln.
+    % 'mean' = jede Messgroesse zaehlt etwa gleich stark.
+    % Bei vielen DOT-/Online-Punkten ist 'mean' oft stabiler.
+    wmode = 'mean';
+
+    % Zusatzgewichtung pro Signal:
+    % Reihenfolge: Biomasse, Glucose, Ammonium, Phosphat, Base, DOT
+    wsig = [1, 1, 1, 1, 1, 1];
 
     DOTstern = max(Data.O2.y);
 
-    % Vereinigtes Zeitraster (inkl. Startzeit)
-    t0 = u(1,1);
-    t_all = t0;
+    % Vereinigtes Zeitraster aller Messpunkte
+    t_all = [];
     for i = 1:size(M,1)
         t_all = [t_all; M{i,1}.t(:)];
     end
-    t_all = unique(t_all);
-    if t_all(1) > t0, t_all = [t0; t_all]; end
 
-    % Einmalige Simulation
+    % Feed-Sprungzeiten zusaetzlich aufnehmen
+    t_min = min(t_all);
+    t_max = max(t_all);
+    tu = u(1,:).';
+    tu = tu(tu >= t_min & tu <= t_max);
+
+    t_all = unique([t_all; tu]);
+
     opts = odeset('RelTol', 1e-7, 'AbsTol', 1e-9);
+
     try
-        [~, X] = ode45(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
+        [~, X] = ode15s(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), ...
+                        t_all, x0, opts);
     catch
-        J = 1e8; return;
+        J = 1e8;
+        return;
     end
+
     if size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))
-        J = 1e8; return;
+        J = 1e8;
+        return;
     end
 
     V = X(:,1);
     J = 0;
+
     for i = 1:size(M,1)
-        mess = M{i,1};  idxState = M{i,2};  divByV = M{i,3};
-        [~, iT] = ismember(mess.t(:), t_all);
+        mess     = M{i,1};
+        name     = M{i,2};
+        idxState = M{i,3};
+        divByV   = M{i,4};
+
+        if isempty(mess.t)
+            continue;
+        end
+
+        [tf, iT] = ismember(mess.t(:), t_all);
+        if any(~tf)
+            warning('Nicht alle Messzeitpunkte fuer %s gefunden.', name);
+            J = 1e8;
+            return;
+        end
 
         y_sim = X(iT, idxState);
+
         if divByV
             y_sim = y_sim ./ V(iT);
         end
-        J = J + sum(((mess.y(:) - y_sim).^2) ./ mess.var(:));
+
+        var_i = max(mess.var(:), eps);
+
+        % Korrekte WLS-Residuen:
+        % mess.var ist bereits sigma^2
+        r = (mess.y(:) - y_sim) ./ sqrt(var_i);
+
+        switch wmode
+            case 'sum'
+                contrib = sum(r.^2);
+
+            case 'mean'
+                contrib = mean(r.^2);
+
+            otherwise
+                error('Unbekannter wmode: %s', wmode);
+        end
+
+        J = J + wsig(i) * contrib;
     end
 
-    if ~isfinite(J), J = 1e8; end
-end
-
-
-function plot_row(row, mess, t_sim, y_sim, name, ylab)
-    subplot(7,1,row);
-    errorbar(mess.t, mess.y, sqrt(mess.var), 'o', ...
-             'MarkerFaceColor','b','MarkerSize',4); hold on;
-    plot(t_sim, y_sim, 'LineWidth', 2);
-    title(['Modell3 - ' name]); ylabel(ylab);
-    legend('Messung \pm \sigma','Simulation'); grid on;
+    if ~isfinite(J)
+        J = 1e8;
+    end
 end

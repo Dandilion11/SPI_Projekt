@@ -182,7 +182,7 @@ x0_m2 = [y_bio(1); y_glc(1); y_am(1); y_ba(1); y_o2(1)];
 % Parameter: [mu_max; K_S; Y_XS; Y_Bam; Y_AmX; Y_XO; KLa]
 p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  1.0; 200];
 pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;   1];
-pUB_m2 = [1.0; 5.0; 1.0; 10; 1.0; 5.0; 1000]; 
+pUB_m2 = [1.0; 5.0; 1.0; 10; 1.0; 100.0; 1000]; 
 %pUB KS von 5 auf 500 erweitert, weil er bei 5 und 50 an die obere Grenze gestoßen ist
 %mu_max von 1 auf 10 erhöht
 
@@ -298,99 +298,196 @@ grid on;
 % Simulationswerte anschliessend den jeweiligen Messzeitpunkten zu.
 
 function J = calculate_wls_error(p, x0, Data, kinetic, withOxygen)
-    % Messgroessen (jede Groesse mit eigenem Zeitvektor)
-    t_bio = Data.Biomasse.t(:); y_bio = Data.Biomasse.y(:); var_bio = Data.Biomasse.var(:);
-    t_glc = Data.Glucose.t(:);  y_glc = Data.Glucose.y(:);  var_glc = Data.Glucose.var(:);
+% WLS fuer Modell 1.
+%
+% Modell1-Zustaende:
+% ohne O2: x = [cX; cGlc]
+% mit O2:  x = [cX; cGlc; DOT]
+%
+% Wichtig:
+% Data.*.var ist bereits die Varianz sigma^2.
+% Daher wird durch sqrt(var) normiert oder durch var geteilt,
+% aber niemals durch var.^2.
+
+    M = { Data.Biomasse, 1, 'Biomasse'; ...
+          Data.Glucose,  2, 'Glucose'  };
+
     DOTstern = 0;
+
     if withOxygen
-        t_o2 = Data.O2.t(:); y_o2 = Data.O2.y(:); var_o2 = Data.O2.var(:);
-        t_all = unique([t_bio; t_glc; t_o2]);   % vereinigtes Zeitraster
-        DOTstern = max(y_o2);
-    else
-        t_all = unique([t_bio; t_glc]);
+        M = [M; {Data.O2, 3, 'DOT'}];
+        DOTstern = max(Data.O2.y);
     end
 
-    % Einmalige Simulation ueber das vereinigte Zeitraster.
-    % (ode15s liefert bei >= 3 Zeitpunkten die Loesung exakt an diesen Punkten.)
-    options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
+    % Gewichtungsmodus:
+    % 'sum'  = klassische WLS: jeder Messpunkt zaehlt einzeln
+    % 'mean' = jede Messgroesse zaehlt etwa gleich stark
+    %
+    % wegen vielen DOT-Punkten wurde die Option 'mean' mit eingebaut
+    wmode = 'mean';
+
+    % Zusatzgewichtung pro Signal.
+    % Modell1 ohne O2: [Biomasse Glucose]
+    % Modell1 mit O2:  [Biomasse Glucose DOT]
+    wsig = ones(size(M,1),1);
+
+    % Vereinigtes Zeitraster aller Messpunkte
+    t_all = [];
+    for i = 1:size(M,1)
+        t_all = [t_all; M{i,1}.t(:)];
+    end
+    t_all = unique(t_all);
+
+    opts = odeset('RelTol', 1e-6, 'AbsTol', 1e-8);
+
     try
-        [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen, DOTstern), t_all, x0, options);
-    catch ME
-        warning('Modell1-Integration fehlgeschlagen: %s', ME.message);
-        J = 1e6;
+        [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p, kinetic, withOxygen, DOTstern), ...
+                            t_all, x0, opts);
+    catch
+        J = 1e8;
         return;
     end
 
-
-    % Simulationswerte den jeweiligen Messzeitpunkten zuordnen
-    [~, iBio] = ismember(t_bio, t_all);
-    [~, iGlc] = ismember(t_glc, t_all);
-    % 
-    % err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
-    % err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
-    % J = err_bio + err_glc;
-    % 
-    % if withOxygen
-    %     [~, iO2] = ismember(t_o2, t_all);
-    %     err_o2 = sum(((y_o2 - X_sim(iO2, 3)).^2) ./ var_o2);
-    %     J = J +  err_o2;
-    % end
-
-    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio.^2);
-    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc.^2);
-    J = err_bio + err_glc;
-
-    if withOxygen
-        [~, iO2] = ismember(t_o2, t_all);
-        err_o2 = 1/20 .* sum(((y_o2 - X_sim(iO2, 3)).^2) ./ var_o2.^2);
-        J = J +  err_o2;
+    if size(X_sim,1) ~= numel(t_all) || any(~isfinite(X_sim(:)))
+        J = 1e8;
+        return;
     end
 
-    if ~isfinite(J); J = 1e6; end
+    J = 0;
+
+    for i = 1:size(M,1)
+        mess     = M{i,1};
+        idxState = M{i,2};
+        name     = M{i,3};
+
+        [tf, iT] = ismember(mess.t(:), t_all);
+        if any(~tf)
+            warning('Nicht alle Messzeitpunkte fuer %s gefunden.', name);
+            J = 1e8;
+            return;
+        end
+
+        y_sim = X_sim(iT, idxState);
+
+        var_i = max(mess.var(:), eps);
+
+        % Korrekte WLS-Residuen:
+        r = (mess.y(:) - y_sim) ./ sqrt(var_i);
+
+        switch wmode
+            case 'sum'
+                contrib = sum(r.^2);
+
+            case 'mean'
+                contrib = mean(r.^2);
+
+            otherwise
+                error('Unbekannter wmode: %s', wmode);
+        end
+
+        J = J + wsig(i) * contrib;
+    end
+
+    if ~isfinite(J)
+        J = 1e8;
+    end
 end
 
-
 function J = calculate_wls_error_m2(p, x0, Data, kinetic)
-    % Modell2: Biomasse, Glucose, Ammonium, Base, O2.
-    t_bio = Data.Biomasse.t(:); y_bio = Data.Biomasse.y(:); var_bio = Data.Biomasse.var(:);
-    t_glc = Data.Glucose.t(:);  y_glc = Data.Glucose.y(:);  var_glc = Data.Glucose.var(:);
-    t_am  = Data.Ammonium.t(:); y_am  = Data.Ammonium.y(:); var_am  = Data.Ammonium.var(:);
-    t_ba  = Data.Base.t(:);     y_ba  = Data.Base.y(:);     var_ba  = Data.Base.var(:);
-    t_o2  = Data.O2.t(:);       y_o2  = Data.O2.y(:);       var_o2  = Data.O2.var(:);
+% WLS fuer Modell 2.
+%
+% Modell2-Zustaende:
+% x = [cX; cGlc; cAm; cBase; DOT]
+%
+% Messgroessen:
+% Biomasse  -> x(1)
+% Glucose   -> x(2)
+% Ammonium  -> x(3)
+% Base      -> x(4)
+% DOT       -> x(5)
+%
+% Wichtig:
+% Data.*.var ist bereits die Varianz sigma^2.
+% Daher wird durch sqrt(var) normiert oder durch var geteilt,
+% aber niemals durch var.^2.
 
-    t_all = unique([t_bio; t_glc; t_am; t_ba; t_o2]);   % vereinigtes Zeitraster
-    DOTstern = max(y_o2);
+    M = { Data.Biomasse, 1, 'Biomasse'; ...
+          Data.Glucose,  2, 'Glucose';  ...
+          Data.Ammonium, 3, 'Ammonium'; ...
+          Data.Base,     4, 'Base';     ...
+          Data.O2,       5, 'DOT'       };
 
-    % Einmalige Simulation ueber das vereinigte Zeitraster.
-    options = odeset('RelTol', 1e-4, 'AbsTol', 1e-6);
+    DOTstern = max(Data.O2.y);
+
+    % Gewichtungsmodus:
+    % 'sum'  = klassische WLS: jeder Messpunkt zaehlt einzeln
+    % 'mean' = jede Messgroesse zaehlt etwa gleich stark
+    %
+    % Empfehlung bei vielen DOT/Base-Punkten: 'mean'
+    wmode = 'sum';
+
+    % Zusatzgewichtung pro Signal:
+    % Reihenfolge: [Biomasse Glucose Ammonium Base DOT]
+    wsig = [1; 1; 1; 1; 1];
+
+    % Vereinigtes Zeitraster aller Messpunkte
+    t_all = [];
+    for i = 1:size(M,1)
+        t_all = [t_all; M{i,1}.t(:)];
+    end
+    t_all = unique(t_all);
+
+    opts = odeset('RelTol', 1e-6, 'AbsTol', 1e-8);
+
     try
-        [~, X_sim] = ode15s(@(t, x) Modell2(t, x, p, kinetic, DOTstern), t_all, x0, options);
-    catch ME
-        warning('Modell2-Integration fehlgeschlagen: %s', ME.message);
-        J = 1e6;
+        [~, X_sim] = ode15s(@(t, x) Modell2(t, x, p, kinetic, DOTstern), ...
+                            t_all, x0, opts);
+    catch
+        J = 1e8;
         return;
     end
 
-    % Simulationswerte den jeweiligen Messzeitpunkten zuordnen
-    [~, iBio] = ismember(t_bio, t_all);
-    [~, iGlc] = ismember(t_glc, t_all);
-    [~, iAm]  = ismember(t_am,  t_all);
-    [~, iBa]  = ismember(t_ba,  t_all);
-    [~, iO2]  = ismember(t_o2,  t_all);
+    if size(X_sim,1) ~= numel(t_all) || any(~isfinite(X_sim(:)))
+        J = 1e8;
+        return;
+    end
 
-    % err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio);
-    % err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc);
-    % err_am  = sum(((y_am  - X_sim(iAm,  3)).^2) ./ var_am);
-    % err_ba  = sum(((y_ba  - X_sim(iBa,  4)).^2) ./ var_ba);
-    % err_o2  = sum(((y_o2  - X_sim(iO2,  5)).^2) ./ var_o2);
-    % J = err_bio + err_glc + err_am + err_ba + err_o2;
+    J = 0;
 
-    err_bio = sum(((y_bio - X_sim(iBio, 1)).^2) ./ var_bio.^2);
-    err_glc = sum(((y_glc - X_sim(iGlc, 2)).^2) ./ var_glc.^2);
-    err_am  = sum(((y_am  - X_sim(iAm,  3)).^2) ./ var_am.^2);
-    err_ba  = sum(((y_ba  - X_sim(iBa,  4)).^2) ./ var_ba.^2);
-    err_o2  = 1/20 .* sum(((y_o2  - X_sim(iO2,  5)).^2) ./ var_o2.^2);
-    J = err_bio + err_glc + err_am + err_ba + err_o2;
+    for i = 1:size(M,1)
+        mess     = M{i,1};
+        idxState = M{i,2};
+        name     = M{i,3};
 
-    if ~isfinite(J); J = 1e6; end
+        [tf, iT] = ismember(mess.t(:), t_all);
+        if any(~tf)
+            warning('Nicht alle Messzeitpunkte fuer %s gefunden.', name);
+            J = 1e8;
+            return;
+        end
+
+        y_sim = X_sim(iT, idxState);
+
+        var_i = max(mess.var(:), eps);
+
+        % WLS-Residuen:
+        r = (mess.y(:) - y_sim) ./ sqrt(var_i);
+
+        switch wmode
+            case 'sum'
+                contrib = sum(r.^2);
+
+            case 'mean'
+                contrib = mean(r.^2);
+
+            otherwise
+                error('Unbekannter wmode: %s', wmode);
+        end
+
+        J = J + wsig(i) * contrib;
+    end
+
+    if ~isfinite(J)
+        J = 1e8;
+    end
 end
