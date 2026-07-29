@@ -1,53 +1,36 @@
-% main_04d_parameter_fitting_m3_woEtOH_fromfeed.m
-% Wie main_04 (Modell3_woEtOH), aber gefittet wird erst AB der ersten
-% Fuetterung. Die vielen dichten Baseline-Punkte vor dem ersten Feed
-% (flach, ~0, kaum Info ueber die Kinetik) werden aus der Zielfunktion
-% entfernt, damit sie den Fit nicht ueberproportional dominieren.
+%% main_04_parameter_fitting_m3_woEtOH_LHS.m
+%  Parameterfitting Modell 3 (Fed-Batch, ohne Ethanol) mit LHS-Multistart,
+%  jetzt mit MULTI-DATENSATZ-TRAINING (gemeinsamer Parametersatz) +
+%  Validierung auf einem gehaltenen Experiment.
 %
-% Wichtig: die ODE integriert weiterhin ab x0 bei t_start = u(1,1).
-% Es werden NUR die Messpunkte mit t < t_feed nicht mehr bewertet -
-% die Anfangsbedingung bleibt also korrekt.
+%  Beibehaltenes Feature der bisherigen LHS-Variante ("from feed"):
+%   - Pro Experiment wird der erste Feed-Zeitpunkt bestimmt und nur ab
+%     t >= t_feed (bis t_hi) gefittet. Die ODE integriert weiterhin ab x0
+%     bei t0 = u(1,1) -> Anfangsbedingung bleibt korrekt, nur die dichten,
+%     flachen Baseline-Punkte vor dem Feed werden nicht bewertet.
+%
+%  Erwartet aus main_01_data_preprocessing_m3.m:
+%    TrainData : 1xN Cell-Array (je ein Experiment-Struct)
+%    ValData   : ein Experiment-Struct
+% =========================================================================
 clear; clc; close all;
 
-% 1. Load Preprocessed Data
 projectRoot = pwd;
-load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_FedBatch_Modell3.mat'));
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+load(fullfile(projectRoot, '..', 'Daten', 'Daten_Processed', 'Processed_FedBatch_Modell3.mat'));
+addpath(fullfile(projectRoot, '..', 'Modelle'), '-begin');
 rehash; clear Modell3_woEtOH
 
-Data = TrainData;
-u    = Data.u;
-x0   = Data.x0;                % [V; mX; mGlc; mAm; mPh; mB; DOT]
+% ---- Fenster- und LHS-Konfiguration ----
+t_hi  = inf;   % obere Fenstergrenze (inf = kein Schwanz-Cut; z.B. 60 zum Kappen)
+N_lhs = 100;   % LHS-Screening-Punkte (zum Testen z.B. 30)
+K_opt = 3;     % beste Startpunkte -> teurer fmincon (zum Testen z.B. 2)
 
-% ---- Ersten Feed-Zeitpunkt bestimmen ----------------------------------
-% Substrat-Feedraten in u: Zeile 2 = uAm, 4 = uPh, 6 = uGlc.
-% Erster Zeitpunkt, zu dem irgendeine davon > 0 wird.
-feedRows   = [2 4 6];
-feedOn     = any(u(feedRows,:) > 0, 1);
-idxFeed    = find(feedOn, 1, 'first');
-if isempty(idxFeed)
-    t_feed = u(1,1);                 % Fallback: kein Feed gefunden
-else
-    t_feed = u(1, idxFeed);
-end
+% Parameter [mumax KS YXS YAmX YPhX YB_Am KLa YXO]
+namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO'};
+p0  = [0.30, 0.50, 0.15, 0.05,  0.02,  1.0, 200, 1.0];
+pLB = [0.01, 0.01, 0.05, 0.001, 0.001, 0.1,  10, 0.1];
+pUB = [1.00, 5.00, 1.00, 1.000, 1.000, 5.0, 800, 5.0];
 
-
-% t_feed = 0.0;   % <- bei Bedarf manuell ueberschreiben
-t_hi = 60;        % 60 / bei inf einsetzen für hinteres kappen ausschalten
-DataFull = Data;                             % voller Satz nur fuer den Plot
-DataFit  = window_data(Data, t_feed, t_hi);   % inf / nur Punkte ab t_feed fuers Fitting
-fprintf('Erster Feed bei t_feed = %.3f h. Fitting nur fuer t >= t_feed.\n', t_feed);
-report_window(DataFull, DataFit);
-% -----------------------------------------------------------------------
-
-
-% 2. Anfangswerte und Parameter
-namen = {'mumax','KS','YXS', 'YAmX','YPhX','YB_Am','KLa','YXO'};
-p0 =    [0.30,   0.50, 0.15,  0.05,  0.02,  1.0,     200,  1.0];
-pLB =   [0.01,   0.01, 0.05, 0.001, 0.001,  0.1,     10,   0.1];
-pUB =   [1.00,   5.00, 1.00, 1.000, 1.000,  5.0,     800,  5.0];
-
-% Parameteridentifikation (WLS) -- auf DataFit (ab Feed)
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                        'MaxFunctionEvaluations', 5000, ...
                        'FiniteDifferenceType', 'central', ...
@@ -55,254 +38,204 @@ options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                        'OptimalityTolerance', 1e-8, ...
                        'StepTolerance', 1e-10);
 
-obj_fun = @(p) wls_error_m3(p, x0, u, DataFit);
-
-% --- Multistart mit Latin Hypercube Sampling ---
-N_lhs = 100;    %(Zum testen: 30) Anzahl LHS-Punkte fuer das billige Screening
-K_opt = 3;      %(Zum testen: 2)  davon die besten -> teurer fmincon-Start
-d     = numel(p0);
-
-rng(42);                          % reproduzierbar
-L = lhsdesign(N_lhs, d);          % N x d, platzfuellend in [0,1]
-
-logLB = log10(pLB);  logUB = log10(pUB);
-P = 10.^(logLB + L .* (logUB - logLB));   % N x d Startpunkte in [pLB,pUB]
-
-% 1) Billiges Screening: Zielfunktion an allen LHS-Punkten (je 1 ODE-Lauf)
-fprintf('LHS-Screening ueber %d Punkte ...\n', N_lhs);
-Jscreen = inf(N_lhs,1);
-for k = 1:N_lhs
-    try, Jscreen(k) = obj_fun(P(k,:)); catch, end
-end
-[~, order] = sort(Jscreen);
-Pstart = [p0; P(order(1:K_opt), :)];   % alter Startpunkt + beste K aus LHS
-
-% 2) fmincon nur von den vielversprechendsten Startpunkten
-p_opt = p0;  fval = inf;
-for k = 1:size(Pstart,1)
-    fprintf('--- fmincon Start %d/%d ---\n', k, size(Pstart,1));
-    try
-        [pk, Jk] = fmincon(obj_fun, Pstart(k,:), [], [], [], [], ...
-                           pLB, pUB, [], options);
-        if Jk < fval
-            fval = Jk;  p_opt = pk;
-        end
-    catch
-        % ungueltiger Start (z.B. ODE divergiert) -> ueberspringen
-    end
+% Pro Trainingsexperiment ab dem eigenen Feed-Start fenstern
+TrainFit = cell(size(TrainData));
+for e = 1:numel(TrainData)
+    t_feed      = feed_start(TrainData{e}.u);
+    TrainFit{e} = window_data(TrainData{e}, t_feed, t_hi);
+    fprintf('%s: Feed-Start t_feed = %.3f h -> Fit ab hier.\n', TrainData{e}.Name, t_feed);
+    report_window(TrainData{e}, TrainFit{e});
 end
 
-% 3. Ausgabe und Speichern
-fprintf('\n--- Modell3 (ab Feed, t_feed=%.3f h): Fitting abgeschlossen ---\n', t_feed);
-fprintf('WLS-Fehler (nur Punkte ab Feed): %.4f\n', fval);
-% zum Vergleich: WLS desselben p_opt auf dem VOLLEN Datensatz
-fval_full = wls_error_m3(p_opt, x0, u, DataFull);
-fprintf('WLS-Fehler (voller Datensatz, zum Vergleich): %.4f\n', fval_full);
+% Validierung ebenfalls fenstern (nur fuer den WLS-Vergleich)
+t_feed_val = feed_start(ValData.u);
+ValFit     = window_data(ValData, t_feed_val, t_hi);
+
+obj_fun = @(p) wls_m3_multi(p, TrainFit);
+[p_opt, fval] = lhs_multistart(obj_fun, p0, pLB, pUB, options, N_lhs, K_opt);
+
+fprintf('\n--- Modell3_woEtOH (LHS, from feed): Fitting abgeschlossen ---\n');
+fprintf('Training %s | Validierung %d\n', mat2str(trainNums), valNum);
+fprintf('Finaler WLS-Fehler (Training, ab Feed): %.4f\n', fval);
 for i = 1:numel(p_opt)
-    fprintf('%-10s = %.4f\n', namen{i}, p_opt(i));
+    fprintf('%-8s = %.4f\n', namen{i}, p_opt(i));
+end
+fprintf('WLS-Fehler (Validierung %d, ab Feed):   %.4f\n', valNum, wls_m3_single(p_opt, ValFit));
+
+save(fullfile(projectRoot, '..', 'Daten', 'p_opt_Modell3_woEtOH.mat'), 'p_opt');
+
+% Visualisierung ueber den VOLLEN Horizont, mit Feed-Linie
+for e = 1:numel(TrainData)
+    plot_fit_m3(TrainData{e}, p_opt, feed_start(TrainData{e}.u), t_hi, ...
+                sprintf('Modell3 LHS | Training %s', TrainData{e}.Name));
+end
+plot_fit_m3(ValData, p_opt, t_feed_val, t_hi, ...
+            sprintf('Modell3 LHS | Validierung %s', ValData.Name));
+
+
+%% ======================================================================
+%% LHS-Multistart
+%% ======================================================================
+function [p_opt, fval] = lhs_multistart(obj_fun, p0, pLB, pUB, options, N_lhs, K_opt)
+    wasCol = iscolumn(p0);
+    p0r  = p0(:).';  pLBr = pLB(:).';  pUBr = pUB(:).';
+    d    = numel(p0r);
+
+    L     = lhsdesign(N_lhs, d);
+    logLB = log10(pLBr);  logUB = log10(pUBr);
+    P     = 10.^(logLB + L .* (logUB - logLB));
+
+    fprintf('LHS-Screening ueber %d Punkte ...\n', N_lhs);
+    Jscreen = inf(N_lhs,1);
+    for k = 1:N_lhs
+        try, Jscreen(k) = obj_fun(P(k,:)); catch, end
+    end
+    [~, order] = sort(Jscreen);
+    K      = min(K_opt, N_lhs);
+    Pstart = [p0r; P(order(1:K), :)];
+
+    p_opt = p0r;  fval = inf;
+    for k = 1:size(Pstart,1)
+        fprintf('--- fmincon Start %d/%d ---\n', k, size(Pstart,1));
+        try
+            [pk, Jk] = fmincon(obj_fun, Pstart(k,:), [], [], [], [], pLBr, pUBr, [], options);
+            if Jk < fval, fval = Jk;  p_opt = pk; end
+        catch
+        end
+    end
+    if wasCol, p_opt = p_opt(:); end
 end
 
-scriptDir = pwd;
-saveDir   = fullfile(scriptDir, '..', 'Daten');
-save(fullfile(saveDir, 'p_opt_Modell3_woEtOH_fromfeed.mat'), 'p_opt', 't_feed');
-%% SAVE
-%  Mit beiden bounds
-%  --- Modell3 (ab Feed, t_feed=1.740 h): Fitting abgeschlossen ---
-% WLS-Fehler (nur Punkte ab Feed): 1336.6468
-% WLS-Fehler (voller Datensatz, zum Vergleich): 1299.1388
-% mumax      = 0.1015
-% KS         = 0.5400
-% YXS        = 0.1207
-% YAmX       = 0.3254
-% YPhX       = 0.0376
-% YB_Am      = 0.1036
-% KLa        = 283.9009
-% YXO        = 0.1657
-% --- Modell3 (ab Feed, t_feed=1.740 h): Fitting abgeschlossen ---
-% WLS-Fehler (nur Punkte ab Feed): 2281.2560
-% WLS-Fehler (voller Datensatz, zum Vergleich): 2352.7695
-% mumax      = 0.1456
-% KS         = 0.8335
-% YXS        = 0.3997
-% YAmX       = 0.0963
-% YPhX       = 0.0041
-% YB_Am      = 0.1000
-% KLa        = 292.5176
-% YXO        = 0.9660
-% --- Modell3 (ab Feed, t_feed=1.740 h): Fitting abgeschlossen ---
-% WLS-Fehler (nur Punkte ab Feed): 1092.2166
-% WLS-Fehler (voller Datensatz, zum Vergleich): 1049.4322 (110 / 4)
-% mumax      = 0.1273
-% KS         = 1.7301
-% YXS        = 0.1660
-% YAmX       = 0.2316
-% YPhX       = 0.0601
-% YB_Am      = 0.1000
-% KLa        = 597.6215
-% YXO        = 0.1004
-% --- Modell3 (ab Feed, t_feed=1.740 h): Fitting abgeschlossen ---
-% WLS-Fehler (nur Punkte ab Feed): 1028.9457
-% WLS-Fehler (voller Datensatz, zum Vergleich): 898.4715??   (150 / 5)
-% mumax      = 0.1617
-% KS         = 4.9985
-% YXS        = 0.1940
-% YAmX       = 0.1835
-% YPhX       = 0.0316
-% YB_Am      = 0.1000
-% KLa        = 281.7907
-% YXO        = 0.2343
-% --- Modell3 (ab Feed, t_feed=0.000 h): Fitting abgeschlossen ---
-% WLS-Fehler (nur Punkte ab Feed): 1049.5533
-% WLS-Fehler (voller Datensatz, zum Vergleich): 1049.5533       150 / 5 mit
-% anfang und ende
-% mumax      = 0.1479
-% KS         = 2.7507
-% YXS        = 0.2492
-% YAmX       = 0.1255
-% YPhX       = 0.1642
-% YB_Am      = 1.1526
-% KLa        = 32.1898
-% YXO        = 3.0911
-% --- Modell3 (ab Feed, t_feed=1.740 h): Fitting abgeschlossen ---
-% WLS-Fehler (nur Punkte ab Feed): 1625.8064
-% WLS-Fehler (voller Datensatz, zum Vergleich): 1499.6276       200 / 6
-% mumax      = 0.0978
-% KS         = 0.0920
-% YXS        = 0.2067
-% YAmX       = 0.1816
-% YPhX       = 0.1188
-% YB_Am      = 1.3420
-% KLa        = 151.5621
-% YXO        = 0.5454
-%% 4. Visualisierung -- Simulation ueber den VOLLEN Horizont, alle Punkte
-t_start = u(1,1);
-t_end   = max(DataFull.Biomasse.t(:)) + 1;
-t_sim   = linspace(t_start, t_end, 300);
 
-DOTstern = max(DataFull.O2.y);
-options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3] = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p_opt,DOTstern), t_sim, x0, options_ode);
-
-V    = X3(:,1);
-cX   = X3(:,2)./V;   cGlc = X3(:,3)./V;   cAm = X3(:,4)./V;
-cPh  = X3(:,5)./V;   mB   = X3(:,6);      DOT = X3(:,7);
-
-figure('Name','Modell3 - Fitting (ab Feed)','Position',[200 40 950 1000]);
-plot_row(1, DataFull.Biomasse, t_sim, cX,   'Biomasse',  'c_X (g/L)',     t_feed, t_hi);
-plot_row(2, DataFull.Glucose,  t_sim, cGlc, 'Glucose',   'c_{Glc} (g/L)', t_feed, t_hi);
-plot_row(3, DataFull.Ammonium, t_sim, cAm,  'Ammonium',  'c_{Am} (g/L)',  t_feed, t_hi);
-plot_row(4, DataFull.Phosphat, t_sim, cPh,  'Phosphat',  'c_{Ph} (g/L)',  t_feed, t_hi);
-plot_row(5, DataFull.Base,     t_sim, mB,   'Base',      'm_B',           t_feed, t_hi);
-plot_row(6, DataFull.O2,       t_sim, DOT,  'DOT',       'DOT (%)',       t_feed, t_hi);
-xlabel('BatchAge (h)');
-
-
-% ======================= Hilfsfunktionen ==============================
+%% ======================================================================
+%% Feed-Start + Fensterung
+%% ======================================================================
+function t_feed = feed_start(u)
+% Erster Zeitpunkt, zu dem eine Substrat-Feedrate > 0 wird.
+% Feedraten in u: Zeile 2 = uAm, 4 = uPh, 6 = uGlc.
+    feedRows = [2 4 6];
+    feedOn   = any(u(feedRows,:) > 0, 1);
+    idx      = find(feedOn, 1, 'first');
+    if isempty(idx), t_feed = u(1,1); else, t_feed = u(1, idx); end
+end
 
 function D = window_data(D, t_lo, t_hi)
 % Behaelt aus jeder Messgroesse nur die Punkte mit t_lo <= t <= t_hi.
+% u, x0, DOTstern, Name, V bleiben unveraendert.
     flds = {'Biomasse','Glucose','Ammonium','Phosphat','Base','O2'};
     for i = 1:numel(flds)
-        f = flds{i};
-        m = D.(f);
-        keep = (m.t >= t_lo) & (m.t <= t_hi);   % Orientierung bleibt erhalten
-        m.t   = m.t(keep);
-        m.y   = m.y(keep);
-        m.var = m.var(keep);
+        f = flds{i};  m = D.(f);
+        keep = (m.t >= t_lo) & (m.t <= t_hi);
+        m.t = m.t(keep);  m.y = m.y(keep);  m.var = m.var(keep);
         D.(f) = m;
     end
 end
 
 function report_window(Dfull, Dcut)
-% Gibt aus, wie viele Punkte pro Messgroesse entfernt wurden.
     flds = {'Biomasse','Glucose','Ammonium','Phosphat','Base','O2'};
     for i = 1:numel(flds)
         f = flds{i};
-        n0 = numel(Dfull.(f).t);
-        n1 = numel(Dcut.(f).t);
-        fprintf('  %-9s: %d -> %d  (%d entfernt)\n', f, n0, n1, n0-n1);
+        fprintf('   %-9s: %d -> %d\n', f, numel(Dfull.(f).t), numel(Dcut.(f).t));
     end
 end
 
 
-function J = wls_error_m3(p, x0, u, Data)
-% WLS über alle Messgrößen. Eine Simulation über das vereinigte
-% Zeitraster, danach Zuordnung zu den jeweiligen Messzeitpunkten.
-% Die Integration startet immer bei t0 = u(1,1) mit x0, unabhaengig
-% davon, ab wann Messpunkte bewertet werden.
-
-    M = { Data.Biomasse, 2, true;   ...
-          Data.Glucose,  3, true;   ...
-          Data.Ammonium, 4, true;   ...
-          Data.Phosphat, 5, true;   ...
-          Data.Base,     6, false;  ...   % mB direkt
-          Data.O2,       7, false;  ...   % DOT direkt
-          };
-
-    % ---- Gewichtung pro Signal ---------------------------------------
-    % wmode = 'sum'  -> klassische WLS: jeder Punkt zaehlt einzeln.
-    %                   Dichte Online-Signale (DOT, Base) dominieren.
-    % wmode = 'mean' -> jeder Signal-Beitrag wird durch seine Punktzahl
-    %                   n_i geteilt -> jedes Signal zaehlt gleich stark,
-    %                   egal wie dicht abgetastet. Gegen DOT-Overfitting.
-    wmode = 'mean';
-    % Zusaetzlicher Handregler pro Signal (Reihenfolge wie M):
-    %        [Bio  Glc  Am   Ph   Base  DOT]
-    wsig =   [ 1    1    1    1    1     1  ];   % z.B. DOT auf 0.5 -> weiter abschwaechen
-    % ------------------------------------------------------------------
-
-    DOTstern = max(Data.O2.y);
-
-    % Vereinigtes Zeitraster (inkl. Startzeit t0)
-    t0 = u(1,1);
-    t_all = t0;
-    for i = 1:size(M,1)
-        t_all = [t_all; M{i,1}.t(:)];
+%% ======================================================================
+%% WLS-Guetefunktionen
+%% ======================================================================
+function J = wls_m3_multi(p, Train)
+    J = 0;
+    for e = 1:numel(Train)
+        J = J + wls_m3_single(p, Train{e});
     end
-    t_all = unique(t_all);
+    if ~isfinite(J), J = 1e8; end
+end
+
+function J = wls_m3_single(p, D)
+% WLS eines (ggf. gefensterten) Experiments fuer Modell3_woEtOH.
+% Integration ab x0 bei t0 = u(1,1); bewertet werden nur die in D
+% vorhandenen (behaltenen) Messpunkte.
+    u = D.u;  x0 = D.x0;  DOTstern = D.DOTstern;
+
+    M = { D.Biomasse, 'Biomasse', 2, true;  ...
+          D.Glucose,  'Glucose',  3, true;  ...
+          D.Ammonium, 'Ammonium', 4, true;  ...
+          D.Phosphat, 'Phosphat', 5, true;  ...
+          D.Base,     'Base',     6, false; ...
+          D.O2,       'DOT',      7, false  };
+    wmode = 'mean';
+    wsig  = [1, 1, 1, 1, 1, 1];
+
+    t0    = u(1,1);
+    t_all = t0;
+    for i = 1:size(M,1), t_all = [t_all; M{i,1}.t(:)]; end
+    tu = u(1,:).';
+    tu = tu(tu >= min(t_all) & tu <= max(t_all));
+    t_all = unique([t_all; tu]);
     if t_all(1) > t0, t_all = [t0; t_all]; end
 
-    % Einmalige Simulation
     opts = odeset('RelTol', 1e-7, 'AbsTol', 1e-9);
     try
-        [~, X] = ode45(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
+        [~, X] = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p,DOTstern), t_all, x0, opts);
     catch
         J = 1e8; return;
     end
-    if size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))
-        J = 1e8; return;
-    end
+    if size(X,1) ~= numel(t_all) || any(~isfinite(X(:))), J = 1e8; return; end
 
     V = X(:,1);
     J = 0;
     for i = 1:size(M,1)
-        mess = M{i,1};  idxState = M{i,2};  divByV = M{i,3};
-        [~, iT] = ismember(mess.t(:), t_all);
-
-        y_sim = X(iT, idxState);
-        if divByV
-            y_sim = y_sim ./ V(iT);
-        end
-        contrib = sum(((mess.y(:) - y_sim).^2) ./ mess.var(:).^2);
-        if strcmp(wmode, 'mean')
-            contrib = contrib / max(numel(mess.y), 1);   % durch Punktzahl teilen
+        mess = M{i,1}; name = M{i,2}; idxS = M{i,3}; divByV = M{i,4};
+        if isempty(mess.t), continue; end
+        [tf, iT] = ismember(mess.t(:), t_all);
+        if any(~tf), warning('Messzeitpunkt fuer %s nicht gefunden.', name); J = 1e8; return; end
+        y_sim = X(iT, idxS);
+        if divByV, y_sim = y_sim ./ V(iT); end
+        r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
+        switch wmode
+            case 'sum',  contrib = sum(r.^2);
+            case 'mean', contrib = mean(r.^2);
         end
         J = J + wsig(i) * contrib;
     end
-
     if ~isfinite(J), J = 1e8; end
 end
 
 
+%% ======================================================================
+%% Visualisierung (voller Horizont, Feed-Linie)
+%% ======================================================================
+function plot_fit_m3(D, p, t_feed, t_hi, titel)
+    u = D.u;  x0 = D.x0;  DOTstern = D.DOTstern;
+
+    t_start = u(1,1);
+    t_end   = max(D.Biomasse.t(:)) + 1;
+    t_sim   = linspace(t_start, t_end, 300);
+    [~, X]  = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p,DOTstern), ...
+                     t_sim, x0, odeset('RelTol',1e-5,'AbsTol',1e-7));
+
+    V   = X(:,1);
+    cX  = X(:,2)./V;  cGlc = X(:,3)./V;  cAm = X(:,4)./V;
+    cPh = X(:,5)./V;  mB   = X(:,6);     DOT = X(:,7);
+
+    figure('Name', titel, 'Position', [200 40 950 1000]);
+    plot_row(1, D.Biomasse, t_sim, cX,   [titel ' - Biomasse'], 'c_X (g/L)',     t_feed, t_hi);
+    plot_row(2, D.Glucose,  t_sim, cGlc, 'Glucose',   'c_{Glc} (g/L)',           t_feed, t_hi);
+    plot_row(3, D.Ammonium, t_sim, cAm,  'Ammonium',  'c_{Am} (g/L)',            t_feed, t_hi);
+    plot_row(4, D.Phosphat, t_sim, cPh,  'Phosphat',  'c_{Ph} (g/L)',            t_feed, t_hi);
+    plot_row(5, D.Base,     t_sim, mB,   'Base',      'm_B',                     t_feed, t_hi);
+    plot_row(6, D.O2,       t_sim, DOT,  'DOT',       'DOT (%)',                 t_feed, t_hi);
+    xlabel('BatchAge (h)');
+end
+
 function plot_row(row, mess, t_sim, y_sim, name, ylab, t_feed, t_hi)
-    subplot(7,1,row);
-    errorbar(mess.t, mess.y, sqrt(mess.var), 'o', ...
-             'MarkerFaceColor','b','MarkerSize',4); hold on;
+    subplot(6,1,row);
+    errorbar(mess.t, mess.y, sqrt(mess.var), 'o', 'MarkerFaceColor','b','MarkerSize',4); hold on;
     plot(t_sim, y_sim, 'LineWidth', 2);
-    xline(t_feed, '--k', 'Feed', 'LabelVerticalAlignment','middle');   % Feed-Start
+    xline(t_feed, '--k', 'Feed', 'LabelVerticalAlignment','middle');
     if nargin >= 8 && isfinite(t_hi)
-        xline(t_hi, '--k', 't_{hi}', 'LabelVerticalAlignment','Top'); % Schwanz-Stop
+        xline(t_hi, '--k', 't_{hi}', 'LabelVerticalAlignment','top');
     end
-    title(['Modell3 - ' name]); ylabel(ylab);
+    title(name); ylabel(ylab);
     legend('Messung \pm \sigma','Simulation','Location','best'); grid on;
 end
