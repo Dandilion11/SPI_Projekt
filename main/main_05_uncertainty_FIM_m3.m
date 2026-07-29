@@ -4,6 +4,7 @@ projectRoot = pwd;
 load(fullfile(projectRoot,'..','Daten','Daten_Processed','Processed_FedBatch_Modell3.mat'));
 load(fullfile(projectRoot,'..','Daten','p_opt_Modell3_woEtOH.mat'));
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+addpath (fullfile(projectRoot,'..','utils'));
 
 Data  = TrainData;
 u     = Data.u;
@@ -11,7 +12,7 @@ p_opt_m3 = p_opt;   % [mumax, KS, YXS, YAmX, YPhX, YB_Am, KLa, YXO]
 param_namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO'};
 np = 8;  nx = 7;  ny = 6;
 
-DOTstern = 100;  % Enfors Gl. 6.15 / Krämer 2017
+DOTstern = max(Data.O2.y);  % Enfors Gl. 6.15 / Krämer 2017
 
 % --- invC: zustandsabhängige Messkovarianz (Krämer 2016, Tab. 2) ---
 % Repräsentative Konzentrationen aus Trainingsdaten
