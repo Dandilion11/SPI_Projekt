@@ -475,7 +475,7 @@ function J = calculate_wls_error_m2(p, x0, Data, kinetic)
         % WLS-Residuen:
         r = (mess.y(:) - y_sim) ./ sqrt(var_i);
         if name == "O2"
-            r = r/10;
+            r = r/20;
         end
         switch wmode
             case 'sum'
