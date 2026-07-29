@@ -31,7 +31,7 @@ t_o2 = Data.O2.t;
 y_o2 = Data.O2.y;
 var_o2 = Data.O2.var;
 DOTstern = max(y_o2);
-%% A2. Anfangswerte und Parameter
+% A2. Anfangswerte und Parameter
 kinetic = 3; % 3 = Monod
 %--------------------------------------------------------------------------
 withOxygen = true; 
@@ -55,7 +55,7 @@ end
 
 
 
-%% A3. Execute Simulation
+% A3. Execute Simulation
 % Simulation nur so lange laufen lassen wie Daten vorhanden sind:
 t_end = max([t_bio(:)+1; t_glc(:)+1]);
 t_sim = linspace(0, t_end, 200);
@@ -66,7 +66,7 @@ options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
 [~, X_sim] = ode15s(@(t, x) Modell1(t, x, p_guess, kinetic, withOxygen, DOTstern), t_sim, x0, options);
 fprintf('[OK] Simulation \n');
 
-%% A4. Extract Data
+% A4. Extract Data
 % Division by V is no longer necessary as Modell1 outputs concentrations directly.
 c_X_sim   = X_sim(:, 1);
 c_Glc_sim = X_sim(:, 2);
@@ -74,7 +74,7 @@ if withOxygen
     cO2_sim = X_sim(:, 3);
 end
 
-%% A5. Plot Results
+% A5. Plot Results
 figure('Name', 'Simulation Test (Modell1)', 'Position', [200, 200, 900, 600]);
 if withOxygen
     nRows = 3;
