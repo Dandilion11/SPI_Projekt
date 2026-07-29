@@ -18,6 +18,7 @@ end
 load(loadPath);
 
 Data = TrainData; % Geht auch ValData -> zum schnelleren wechseln
+xl = [0, max([Data.Biomasse.t(:); Data.Glucose.t(:); Data.O2.t(:)]) + 0.5];  % Anzeige-Fenster (Batch-Cut)
 
 t_bio   = Data.Biomasse.t;
 y_bio   = Data.Biomasse.y;
@@ -88,7 +89,7 @@ plot(t_sim, c_X_sim, 'LineWidth', 2);
 title('Biomass');
 ylabel('c_X (g/L)');
 legend("Messung \pm \sigma", "Simulation",Location="southeast");
-xlim([0 9.5])
+xlim(xl)
 grid on;
 
 subplot(nRows, 1, 2);
@@ -100,7 +101,7 @@ title('Glucose');
 xlabel('BatchAge (h)');
 ylabel('c_{Glc} (g/L)');
 legend("Messung \pm \sigma", "Simulation",Location="northeast");
-xlim([0 9.5])
+xlim(xl)
 grid on;
 
 if withOxygen
@@ -111,7 +112,7 @@ if withOxygen
     ylabel('cO_2 (%)');
     
     legend("Messung \pm \sigma", "Simulation");
-    xlim([0 9.5])
+    xlim(xl)
     grid on;
 end
 
@@ -146,7 +147,7 @@ plot(t_sim_m2, X2(:,1), 'LineWidth', 2);
 title('Modell2 - Biomasse'); 
 ylabel('c_X (g/L)'); 
 legend("Messung \pm \sigma","Simulation"); 
-xlim([0 10])
+xlim(xl)
 grid on;
 
 subplot(5,1,2);
@@ -154,7 +155,7 @@ errorbar(Data.Glucose.t, Data.Glucose.y, sqrt(Data.Glucose.var), 'o', 'MarkerFac
 plot(t_sim_m2, X2(:,2), 'LineWidth', 2);
 title('Modell2 - Glucose'); 
 ylabel('c_{Glc} (g/L)');  
-xlim([0 10])
+xlim(xl)
 legend("Messung \pm \sigma","Simulation");
 grid on;
 
@@ -163,7 +164,7 @@ errorbar(Data.Ammonium.t, Data.Ammonium.y, sqrt(Data.Ammonium.var), 'o', 'Marker
 plot(t_sim_m2, X2(:,3), 'LineWidth', 2);
 title('Modell2 - Ammonium'); 
 ylabel('c_{Am} (g/L)'); 
-xlim([0 10])
+xlim(xl)
 legend("Messung \pm \sigma","Simulation");
 grid on;
 
@@ -172,7 +173,7 @@ errorbar(Data.Base.t, Data.Base.y, sqrt(Data.Base.var), 'o', 'MarkerFaceColor', 
 plot(t_sim_m2, X2(:,4), 'LineWidth', 2);
 title('Modell2 - Base'); 
 ylabel('c_{Base}'); 
-xlim([0 10])
+xlim(xl)
 legend("Messung \pm \sigma","Simulation");
 grid on;
 
@@ -182,7 +183,7 @@ plot(t_sim_m2, X2(:,5), 'LineWidth', 2);
 title('Modell2 - Sauerstoff (DOT)'); 
 ylabel('cO_2 (%)'); 
 xlabel('BatchAge (h)');
-xlim([0 10])
+xlim(xl)
 legend("Messung \pm \sigma","Simulation");
 grid on;
 

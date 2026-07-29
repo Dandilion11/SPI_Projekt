@@ -58,8 +58,8 @@ options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
 obj_fun = @(p) wls_error_m3(p, x0, u, DataFit);
 
 % --- Multistart mit Latin Hypercube Sampling ---
-N_lhs = 100;    %(Zum testen: 30) Anzahl LHS-Punkte fuer das billige Screening
-K_opt = 3;      %(Zum testen: 2)  davon die besten -> teurer fmincon-Start
+N_lhs = 30;    %(Zum testen: 30) Anzahl LHS-Punkte fuer das billige Screening
+K_opt = 2;      %(Zum testen: 2)  davon die besten -> teurer fmincon-Start
 d     = numel(p0);
 
 rng(42);                          % reproduzierbar
@@ -194,6 +194,40 @@ plot_row(3, DataFull.Ammonium, t_sim, cAm,  'Ammonium',  'c_{Am} (g/L)',  t_feed
 plot_row(4, DataFull.Phosphat, t_sim, cPh,  'Phosphat',  'c_{Ph} (g/L)',  t_feed, t_hi);
 plot_row(5, DataFull.Base,     t_sim, mB,   'Base',      'm_B',           t_feed, t_hi);
 plot_row(6, DataFull.O2,       t_sim, DOT,  'DOT',       'DOT (%)',       t_feed, t_hi);
+xlabel('BatchAge (h)');
+
+
+%% 5. Validierung auf ValData (RamScDef07) -- mit den auf TrainData gefitteten p_opt
+u_val  = ValData.u;
+x0_val = ValData.x0;
+
+% eigener Feed-Start des Validierungslaufs (gleiche Logik wie beim Training)
+feedOn_val  = any(u_val(feedRows,:) > 0, 1);
+idxFeed_val = find(feedOn_val, 1, 'first');
+if isempty(idxFeed_val), t_feed_val = u_val(1,1); else, t_feed_val = u_val(1, idxFeed_val); end
+
+% Validierungsfehler: nur Punkte ab Feed (vergleichbar zum Training)
+ValFit   = window_data(ValData, t_feed_val, t_hi);
+fval_val = wls_error_m3(p_opt, x0_val, u_val, ValFit);
+fprintf('WLS-Fehler (Validierung, ab Feed t=%.3f h): %.4f\n', t_feed_val, fval_val);
+
+% Simulation Validierung ueber den VOLLEN Horizont (ab x0 bei u(1,1))
+t_end_val    = max(ValData.Biomasse.t(:)) + 1;
+t_sim_val    = linspace(u_val(1,1), t_end_val, 300);
+DOTstern_val = max(ValData.O2.y);
+[~, Xv] = ode15s(@(t,x) Modell3_woEtOH(t,x,u_val,p_opt,DOTstern_val), t_sim_val, x0_val, options_ode);
+
+Vv   = Xv(:,1);
+cXv  = Xv(:,2)./Vv;   cGlcv = Xv(:,3)./Vv;   cAmv = Xv(:,4)./Vv;
+cPhv = Xv(:,5)./Vv;   mBv   = Xv(:,6);       DOTv = Xv(:,7);
+
+figure('Name','Modell3 - Validierung (RamScDef07)','Position',[220 40 950 1000]);
+plot_row(1, ValData.Biomasse, t_sim_val, cXv,   'Biomasse (Val)',  'c_X (g/L)',     t_feed_val, t_hi);
+plot_row(2, ValData.Glucose,  t_sim_val, cGlcv, 'Glucose (Val)',   'c_{Glc} (g/L)', t_feed_val, t_hi);
+plot_row(3, ValData.Ammonium, t_sim_val, cAmv,  'Ammonium (Val)',  'c_{Am} (g/L)',  t_feed_val, t_hi);
+plot_row(4, ValData.Phosphat, t_sim_val, cPhv,  'Phosphat (Val)',  'c_{Ph} (g/L)',  t_feed_val, t_hi);
+plot_row(5, ValData.Base,     t_sim_val, mBv,   'Base (Val)',      'm_B',           t_feed_val, t_hi);
+plot_row(6, ValData.O2,       t_sim_val, DOTv,  'DOT (Val)',       'DOT (%)',       t_feed_val, t_hi);
 xlabel('BatchAge (h)');
 
 
