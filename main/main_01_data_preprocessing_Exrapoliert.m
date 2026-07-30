@@ -47,12 +47,14 @@ TrainData.O2       = messwert(exp_03.Messdaten.O2,        ab.O2,       "O2",    
 TrainData.Ammonium = messwert(exp_03.Messdaten.Ammonium, ab.Ammonium, "Ammonium", useMeasuredVar, tMax);
 TrainData.Base     = messwert(exp_03.Messdaten.BASE,      ab.Base,     "Base",     useMeasuredVar, tMax);
 
+
 % 5. Validierungsdaten extrahieren und Varianz berechnen (RamScDef04)
 ValData.Biomasse = messwert(exp_04.Messdaten.Biomasse, ab.Biomasse, "Biomasse", useMeasuredVar, tMax);
 ValData.Glucose  = messwert(exp_04.Messdaten.Glucose,  ab.Glucose,  "Glucose",  useMeasuredVar, tMax);
 ValData.O2       = messwert(exp_04.Messdaten.O2,        ab.O2,       "O2",       useMeasuredVar, tMax);
 ValData.Ammonium = messwert(exp_04.Messdaten.Ammonium, ab.Ammonium, "Ammonium", useMeasuredVar, tMax);
 ValData.Base     = messwert(exp_04.Messdaten.BASE,      ab.Base,     "Base",     useMeasuredVar, tMax);
+
 
 TrainData.V = exp_03.Messdaten.Weight.Wert(1);
 ValData.V   = exp_04.Messdaten.Weight.Wert(1);
@@ -136,4 +138,16 @@ end
 s.t   = t;
 s.y   = y;
 s.var = v;
+end
+
+%%
+function probe = probenahme(Data, tMax)
+
+    t = Data.Probenahmen.BatchAge;
+
+    idx = t <= tMax;
+
+    probe.t = t(idx);
+    probe.V = Data.Probenahmen.Volumen(idx);
+
 end

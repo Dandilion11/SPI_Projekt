@@ -16,6 +16,7 @@ addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 rehash; clear Modell3_woEtOH
 
 Data = TrainData;
+Probe_train = TrainDataProbe;
 u    = Data.u;
 x0   = Data.x0;                % [V; mX; mGlc; mAm; mPh; mB; DOT]
 
@@ -55,7 +56,7 @@ options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                        'OptimalityTolerance', 1e-8, ...
                        'StepTolerance', 1e-10);
 
-obj_fun = @(p) wls_error_m3(p, x0, u, DataFit);
+obj_fun = @(p) wls_error_m3(p, x0, u, DataFit, Probe_train);
 
 % --- Multistart mit Latin Hypercube Sampling ---
 N_lhs = 30;    %(Zum testen: 30) Anzahl LHS-Punkte fuer das billige Screening
@@ -96,7 +97,7 @@ end
 fprintf('\n--- Modell3 (ab Feed, t_feed=%.3f h): Fitting abgeschlossen ---\n', t_feed);
 fprintf('WLS-Fehler (nur Punkte ab Feed): %.4f\n', fval);
 % zum Vergleich: WLS desselben p_opt auf dem VOLLEN Datensatz
-fval_full = wls_error_m3(p_opt, x0, u, DataFull);
+fval_full = wls_error_m3(p_opt, x0, u, DataFull, Probe_train);
 fprintf('WLS-Fehler (voller Datensatz, zum Vergleich): %.4f\n', fval_full);
 for i = 1:numel(p_opt)
     fprintf('%-10s = %.4f\n', namen{i}, p_opt(i));
@@ -105,6 +106,180 @@ end
 scriptDir = pwd;
 saveDir   = fullfile(scriptDir, '..', 'Daten');
 save(fullfile(saveDir, 'p_opt_Modell3_woEtOH_fromfeed.mat'), 'p_opt', 't_feed');
+
+%% Visualisierung -- Simulation ueber den VOLLEN Horizont, alle Punkte
+t_start = u(1,1);
+t_end   = max(DataFull.Biomasse.t(:)) + 1;
+t_sim   = linspace(t_start, t_end, 300);
+
+DOTstern = max(DataFull.O2.y);
+options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
+X3 = sim_m3_sample(t_sim, x0, u, p_opt, DOTstern, Probe_train);
+
+V    = X3(:,1);
+cX   = X3(:,2)./V;   cGlc = X3(:,3)./V;   cAm = X3(:,4)./V; 4.
+cPh  = X3(:,5)./V;   mB   = X3(:,6);      DOT = X3(:,7);
+
+figure('Name','Modell3 - Fitting (ab Feed)','Position',[200 40 950 1000]);
+plot_row(1, DataFull.Biomasse, t_sim, cX,   'Biomasse',  'c_X (g/L)',     t_feed, t_hi);
+plot_row(2, DataFull.Glucose,  t_sim, cGlc, 'Glucose',   'c_{Glc} (g/L)', t_feed, t_hi);
+plot_row(3, DataFull.Ammonium, t_sim, cAm,  'Ammonium',  'c_{Am} (g/L)',  t_feed, t_hi);
+plot_row(4, DataFull.Phosphat, t_sim, cPh,  'Phosphat',  'c_{Ph} (g/L)',  t_feed, t_hi);
+plot_row(5, DataFull.Base,     t_sim, mB,   'Base',      'm_B',           t_feed, t_hi);
+plot_row(6, DataFull.O2,       t_sim, DOT,  'DOT',       'DOT (%)',       t_feed, t_hi);
+xlabel('BatchAge (h)');
+
+
+%% 5. Validierung auf ValData (RamScDef07) -- mit den auf TrainData gefitteten p_opt
+u_val  = ValData.u;
+x0_val = ValData.x0;
+Probe_val = ValDataProbe;
+
+% eigener Feed-Start des Validierungslaufs (gleiche Logik wie beim Training)
+feedOn_val  = any(u_val(feedRows,:) > 0, 1);
+idxFeed_val = find(feedOn_val, 1, 'first');
+if isempty(idxFeed_val), t_feed_val = u_val(1,1); else, t_feed_val = u_val(1, idxFeed_val); end
+
+% Validierungsfehler: nur Punkte ab Feed (vergleichbar zum Training)
+ValFit   = window_data(ValData, t_feed_val, t_hi);
+fval_val = wls_error_m3(p_opt, x0_val, u_val, ValFit);
+fprintf('WLS-Fehler (Validierung, ab Feed t=%.3f h): %.4f\n', t_feed_val, fval_val);
+
+% Simulation Validierung ueber den VOLLEN Horizont (ab x0 bei u(1,1))
+t_end_val    = max(ValData.Biomasse.t(:)) + 1;
+t_sim_val    = linspace(u_val(1,1), t_end_val, 300);
+DOTstern_val = max(ValData.O2.y);
+Xv = sim_m3_sample(t_sim_val, x0_val, u_val, p_opt, DOTstern_val, Probe_val);
+
+Vv   = Xv(:,1);
+cXv  = Xv(:,2)./Vv;   cGlcv = Xv(:,3)./Vv;   cAmv = Xv(:,4)./Vv;
+cPhv = Xv(:,5)./Vv;   mBv   = Xv(:,6);       DOTv = Xv(:,7);
+
+figure('Name','Modell3 - Validierung (RamScDef07)','Position',[220 40 950 1000]);
+plot_row(1, ValData.Biomasse, t_sim_val, cXv,   'Biomasse (Val)',  'c_X (g/L)',     t_feed_val, t_hi);
+plot_row(2, ValData.Glucose,  t_sim_val, cGlcv, 'Glucose (Val)',   'c_{Glc} (g/L)', t_feed_val, t_hi);
+plot_row(3, ValData.Ammonium, t_sim_val, cAmv,  'Ammonium (Val)',  'c_{Am} (g/L)',  t_feed_val, t_hi);
+plot_row(4, ValData.Phosphat, t_sim_val, cPhv,  'Phosphat (Val)',  'c_{Ph} (g/L)',  t_feed_val, t_hi);
+plot_row(5, ValData.Base,     t_sim_val, mBv,   'Base (Val)',      'm_B',           t_feed_val, t_hi);
+plot_row(6, ValData.O2,       t_sim_val, DOTv,  'DOT (Val)',       'DOT (%)',       t_feed_val, t_hi);
+xlabel('BatchAge (h)');
+
+
+% ======================= Hilfsfunktionen ==============================
+
+function D = window_data(D, t_lo, t_hi)
+% Behaelt aus jeder Messgroesse nur die Punkte mit t_lo <= t <= t_hi.
+    flds = {'Biomasse','Glucose','Ammonium','Phosphat','Base','O2'};
+    for i = 1:numel(flds)
+        f = flds{i};
+        m = D.(f);
+        keep = (m.t >= t_lo) & (m.t <= t_hi);   % Orientierung bleibt erhalten
+        m.t   = m.t(keep);
+        m.y   = m.y(keep);
+        m.var = m.var(keep);
+        D.(f) = m;
+    end
+end
+
+function report_window(Dfull, Dcut)
+% Gibt aus, wie viele Punkte pro Messgroesse entfernt wurden.
+    flds = {'Biomasse','Glucose','Ammonium','Phosphat','Base','O2'};
+    for i = 1:numel(flds)
+        f = flds{i};
+        n0 = numel(Dfull.(f).t);
+        n1 = numel(Dcut.(f).t);
+        fprintf('  %-9s: %d -> %d  (%d entfernt)\n', f, n0, n1, n0-n1);
+    end
+end
+
+
+function J = wls_error_m3(p, x0, u, Data, Probe)
+% WLS über alle Messgrößen. Eine Simulation über das vereinigte
+% Zeitraster, danach Zuordnung zu den jeweiligen Messzeitpunkten.
+% Die Integration startet immer bei t0 = u(1,1) mit x0, unabhaengig
+% davon, ab wann Messpunkte bewertet werden.
+
+    M = { Data.Biomasse, 2, true;   ...
+          Data.Glucose,  3, true;   ...
+          Data.Ammonium, 4, true;   ...
+          Data.Phosphat, 5, true;   ...
+          Data.Base,     6, false;  ...   % mB direkt
+          Data.O2,       7, false;  ...   % DOT direkt
+          };
+
+    % ---- Gewichtung pro Signal ---------------------------------------
+    % wmode = 'sum'  -> klassische WLS: jeder Punkt zaehlt einzeln.
+    %                   Dichte Online-Signale (DOT, Base) dominieren.
+    % wmode = 'mean' -> jeder Signal-Beitrag wird durch seine Punktzahl
+    %                   n_i geteilt -> jedes Signal zaehlt gleich stark,
+    %                   egal wie dicht abgetastet. Gegen DOT-Overfitting.
+    wmode = 'mean';
+    % Zusaetzlicher Handregler pro Signal (Reihenfolge wie M):
+    %        [Bio  Glc  Am   Ph   Base  DOT]
+    wsig =   [ 1    1    1    1    1     1  ];   % z.B. DOT auf 0.5 -> weiter abschwaechen
+    % ------------------------------------------------------------------
+
+    DOTstern = max(Data.O2.y);
+
+    % Vereinigtes Zeitraster (inkl. Startzeit t0)
+    t0 = u(1,1);
+    t_all = t0;
+    for i = 1:size(M,1)
+        t_all = [t_all; M{i,1}.t(:)];
+    end
+    t_all = unique(t_all);
+    if t_all(1) > t0, t_all = [t0; t_all]; end
+    try
+        X = sim_m3_sample(t_all, x0, u, p, DOTstern, Probe);
+    catch
+        print("Fehler in der Simulation")
+        J = 1e8; return;
+    end
+        
+    if size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))
+        print("size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))")
+        J = 1e8; return;
+    end
+
+    V = X(:,1);
+    J = 0;
+    for i = 1:size(M,1)
+        mess = M{i,1};  idxState = M{i,2};  divByV = M{i,3};
+        [~, iT] = ismember(mess.t(:), t_all);
+
+        y_sim = X(iT, idxState);
+        if divByV
+            y_sim = y_sim ./ V(iT);
+        end
+        contrib = sum(((mess.y(:) - y_sim).^2) ./ mess.var(:).^2);
+        if strcmp(wmode, 'mean')
+            contrib = contrib / max(numel(mess.y), 1);   % durch Punktzahl teilen
+        end
+        J = J + wsig(i) * contrib;
+    end
+
+    if ~isfinite(J)
+        print("J ist unendlich")
+        J = 1e8; 
+    end
+end
+
+
+function plot_row(row, mess, t_sim, y_sim, name, ylab, t_feed, t_hi)
+    subplot(7,1,row);
+    errorbar(mess.t, mess.y, sqrt(mess.var), 'o', ...
+             'MarkerFaceColor','b','MarkerSize',4); hold on;
+    plot(t_sim, y_sim, 'LineWidth', 2);
+    xline(t_feed, '--k', 'Feed', 'LabelVerticalAlignment','middle');   % Feed-Start
+    if nargin >= 8 && isfinite(t_hi)
+        xline(t_hi, '--k', 't_{hi}', 'LabelVerticalAlignment','Top'); % Schwanz-Stop
+    end
+    title(['Modell3 - ' name]); ylabel(ylab);
+    legend('Messung \pm \sigma','Simulation','Location','best'); grid on;
+end
+
+
+
 %% SAVE
 %  Mit beiden bounds
 %  --- Modell3 (ab Feed, t_feed=1.740 h): Fitting abgeschlossen ---
@@ -174,169 +349,3 @@ save(fullfile(saveDir, 'p_opt_Modell3_woEtOH_fromfeed.mat'), 'p_opt', 't_feed');
 % YB_Am      = 1.3420
 % KLa        = 151.5621
 % YXO        = 0.5454
-%% 4. Visualisierung -- Simulation ueber den VOLLEN Horizont, alle Punkte
-t_start = u(1,1);
-t_end   = max(DataFull.Biomasse.t(:)) + 1;
-t_sim   = linspace(t_start, t_end, 300);
-
-DOTstern = max(DataFull.O2.y);
-options_ode = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3] = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p_opt,DOTstern), t_sim, x0, options_ode);
-
-V    = X3(:,1);
-cX   = X3(:,2)./V;   cGlc = X3(:,3)./V;   cAm = X3(:,4)./V;
-cPh  = X3(:,5)./V;   mB   = X3(:,6);      DOT = X3(:,7);
-
-figure('Name','Modell3 - Fitting (ab Feed)','Position',[200 40 950 1000]);
-plot_row(1, DataFull.Biomasse, t_sim, cX,   'Biomasse',  'c_X (g/L)',     t_feed, t_hi);
-plot_row(2, DataFull.Glucose,  t_sim, cGlc, 'Glucose',   'c_{Glc} (g/L)', t_feed, t_hi);
-plot_row(3, DataFull.Ammonium, t_sim, cAm,  'Ammonium',  'c_{Am} (g/L)',  t_feed, t_hi);
-plot_row(4, DataFull.Phosphat, t_sim, cPh,  'Phosphat',  'c_{Ph} (g/L)',  t_feed, t_hi);
-plot_row(5, DataFull.Base,     t_sim, mB,   'Base',      'm_B',           t_feed, t_hi);
-plot_row(6, DataFull.O2,       t_sim, DOT,  'DOT',       'DOT (%)',       t_feed, t_hi);
-xlabel('BatchAge (h)');
-
-
-%% 5. Validierung auf ValData (RamScDef07) -- mit den auf TrainData gefitteten p_opt
-u_val  = ValData.u;
-x0_val = ValData.x0;
-
-% eigener Feed-Start des Validierungslaufs (gleiche Logik wie beim Training)
-feedOn_val  = any(u_val(feedRows,:) > 0, 1);
-idxFeed_val = find(feedOn_val, 1, 'first');
-if isempty(idxFeed_val), t_feed_val = u_val(1,1); else, t_feed_val = u_val(1, idxFeed_val); end
-
-% Validierungsfehler: nur Punkte ab Feed (vergleichbar zum Training)
-ValFit   = window_data(ValData, t_feed_val, t_hi);
-fval_val = wls_error_m3(p_opt, x0_val, u_val, ValFit);
-fprintf('WLS-Fehler (Validierung, ab Feed t=%.3f h): %.4f\n', t_feed_val, fval_val);
-
-% Simulation Validierung ueber den VOLLEN Horizont (ab x0 bei u(1,1))
-t_end_val    = max(ValData.Biomasse.t(:)) + 1;
-t_sim_val    = linspace(u_val(1,1), t_end_val, 300);
-DOTstern_val = max(ValData.O2.y);
-[~, Xv] = ode15s(@(t,x) Modell3_woEtOH(t,x,u_val,p_opt,DOTstern_val), t_sim_val, x0_val, options_ode);
-
-Vv   = Xv(:,1);
-cXv  = Xv(:,2)./Vv;   cGlcv = Xv(:,3)./Vv;   cAmv = Xv(:,4)./Vv;
-cPhv = Xv(:,5)./Vv;   mBv   = Xv(:,6);       DOTv = Xv(:,7);
-
-figure('Name','Modell3 - Validierung (RamScDef07)','Position',[220 40 950 1000]);
-plot_row(1, ValData.Biomasse, t_sim_val, cXv,   'Biomasse (Val)',  'c_X (g/L)',     t_feed_val, t_hi);
-plot_row(2, ValData.Glucose,  t_sim_val, cGlcv, 'Glucose (Val)',   'c_{Glc} (g/L)', t_feed_val, t_hi);
-plot_row(3, ValData.Ammonium, t_sim_val, cAmv,  'Ammonium (Val)',  'c_{Am} (g/L)',  t_feed_val, t_hi);
-plot_row(4, ValData.Phosphat, t_sim_val, cPhv,  'Phosphat (Val)',  'c_{Ph} (g/L)',  t_feed_val, t_hi);
-plot_row(5, ValData.Base,     t_sim_val, mBv,   'Base (Val)',      'm_B',           t_feed_val, t_hi);
-plot_row(6, ValData.O2,       t_sim_val, DOTv,  'DOT (Val)',       'DOT (%)',       t_feed_val, t_hi);
-xlabel('BatchAge (h)');
-
-
-% ======================= Hilfsfunktionen ==============================
-
-function D = window_data(D, t_lo, t_hi)
-% Behaelt aus jeder Messgroesse nur die Punkte mit t_lo <= t <= t_hi.
-    flds = {'Biomasse','Glucose','Ammonium','Phosphat','Base','O2'};
-    for i = 1:numel(flds)
-        f = flds{i};
-        m = D.(f);
-        keep = (m.t >= t_lo) & (m.t <= t_hi);   % Orientierung bleibt erhalten
-        m.t   = m.t(keep);
-        m.y   = m.y(keep);
-        m.var = m.var(keep);
-        D.(f) = m;
-    end
-end
-
-function report_window(Dfull, Dcut)
-% Gibt aus, wie viele Punkte pro Messgroesse entfernt wurden.
-    flds = {'Biomasse','Glucose','Ammonium','Phosphat','Base','O2'};
-    for i = 1:numel(flds)
-        f = flds{i};
-        n0 = numel(Dfull.(f).t);
-        n1 = numel(Dcut.(f).t);
-        fprintf('  %-9s: %d -> %d  (%d entfernt)\n', f, n0, n1, n0-n1);
-    end
-end
-
-
-function J = wls_error_m3(p, x0, u, Data)
-% WLS über alle Messgrößen. Eine Simulation über das vereinigte
-% Zeitraster, danach Zuordnung zu den jeweiligen Messzeitpunkten.
-% Die Integration startet immer bei t0 = u(1,1) mit x0, unabhaengig
-% davon, ab wann Messpunkte bewertet werden.
-
-    M = { Data.Biomasse, 2, true;   ...
-          Data.Glucose,  3, true;   ...
-          Data.Ammonium, 4, true;   ...
-          Data.Phosphat, 5, true;   ...
-          Data.Base,     6, false;  ...   % mB direkt
-          Data.O2,       7, false;  ...   % DOT direkt
-          };
-
-    % ---- Gewichtung pro Signal ---------------------------------------
-    % wmode = 'sum'  -> klassische WLS: jeder Punkt zaehlt einzeln.
-    %                   Dichte Online-Signale (DOT, Base) dominieren.
-    % wmode = 'mean' -> jeder Signal-Beitrag wird durch seine Punktzahl
-    %                   n_i geteilt -> jedes Signal zaehlt gleich stark,
-    %                   egal wie dicht abgetastet. Gegen DOT-Overfitting.
-    wmode = 'mean';
-    % Zusaetzlicher Handregler pro Signal (Reihenfolge wie M):
-    %        [Bio  Glc  Am   Ph   Base  DOT]
-    wsig =   [ 1    1    1    1    1     1  ];   % z.B. DOT auf 0.5 -> weiter abschwaechen
-    % ------------------------------------------------------------------
-
-    DOTstern = max(Data.O2.y);
-
-    % Vereinigtes Zeitraster (inkl. Startzeit t0)
-    t0 = u(1,1);
-    t_all = t0;
-    for i = 1:size(M,1)
-        t_all = [t_all; M{i,1}.t(:)];
-    end
-    t_all = unique(t_all);
-    if t_all(1) > t0, t_all = [t0; t_all]; end
-
-    % Einmalige Simulation
-    opts = odeset('RelTol', 1e-7, 'AbsTol', 1e-9);
-    try
-        [~, X] = ode45(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
-    catch
-        J = 1e8; return;
-    end
-    if size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))
-        J = 1e8; return;
-    end
-
-    V = X(:,1);
-    J = 0;
-    for i = 1:size(M,1)
-        mess = M{i,1};  idxState = M{i,2};  divByV = M{i,3};
-        [~, iT] = ismember(mess.t(:), t_all);
-
-        y_sim = X(iT, idxState);
-        if divByV
-            y_sim = y_sim ./ V(iT);
-        end
-        contrib = sum(((mess.y(:) - y_sim).^2) ./ mess.var(:).^2);
-        if strcmp(wmode, 'mean')
-            contrib = contrib / max(numel(mess.y), 1);   % durch Punktzahl teilen
-        end
-        J = J + wsig(i) * contrib;
-    end
-
-    if ~isfinite(J), J = 1e8; end
-end
-
-
-function plot_row(row, mess, t_sim, y_sim, name, ylab, t_feed, t_hi)
-    subplot(7,1,row);
-    errorbar(mess.t, mess.y, sqrt(mess.var), 'o', ...
-             'MarkerFaceColor','b','MarkerSize',4); hold on;
-    plot(t_sim, y_sim, 'LineWidth', 2);
-    xline(t_feed, '--k', 'Feed', 'LabelVerticalAlignment','middle');   % Feed-Start
-    if nargin >= 8 && isfinite(t_hi)
-        xline(t_hi, '--k', 't_{hi}', 'LabelVerticalAlignment','Top'); % Schwanz-Stop
-    end
-    title(['Modell3 - ' name]); ylabel(ylab);
-    legend('Messung \pm \sigma','Simulation','Location','best'); grid on;
-end

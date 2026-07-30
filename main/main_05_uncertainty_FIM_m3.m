@@ -19,7 +19,7 @@ DOTstern = max(Data.O2.y);  % Enfors Gl. 6.15 / Krämer 2017
 c_rep = [mean(Data.Biomasse.y), mean(Data.Glucose.y), ...
          mean(Data.Ammonium.y), mean(Data.Phosphat.y), ...
          mean(Data.Base.y),     mean(Data.O2.y)];
-ab = [0.02 0.015; 0.06 0.25; 0.06 0.01; 0.07 0.01; 0.01 10; 0.02 0.5];
+ab = [0.02 0.015; 0.06 0.25; 0.06 0.01; 0.07 0.01; 0.01 0.01; 0.02 0.5];
 sigma_rep = (ab(:,1).*c_rep(:) + ab(:,2)).^2;
 C    = diag(sigma_rep);
 invC = inv(C);

@@ -230,3 +230,4 @@ function J = calculate_wls_error_m2(p, x0, Data, kinetic)
     end
     if ~isfinite(J), J = 1e8; end
 end
+

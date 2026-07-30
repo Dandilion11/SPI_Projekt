@@ -6,6 +6,7 @@ scriptDir = pwd;
 loadPath = fullfile(scriptDir, '..', 'Daten', 'Daten_Processed', 'Processed_FedBatch_Modell3.mat');
 projectRoot = pwd;
 addpath(fullfile(projectRoot, '..','Modelle'),'-begin');
+addpath(fullfile(projectRoot, '..','utils'),'-begin');
 
 rehash;
 clear Modell3
@@ -18,7 +19,7 @@ end
 load(loadPath);
 
 Data = TrainData; % Geht auch ValData -> zum schnelleren wechseln
-
+Probe = TrainDataProbe;
 % Anfangswerte und Parameter
 %   [mumax,KS,YXS,YAmX,YPhX,YB_Am, KLa, YXO]
 p_guess = [0.3, 0.5, 0.15, 0.05, 0.02, 1.0, 200, 1.0];
@@ -35,8 +36,7 @@ assert(size(Data.u,1) >= 10, 'u-Matrix hat zu wenige Zeilen (%d)', size(Data.u,1
 
 DOTstern = max(Data.O2.y);
 
-options = odeset('RelTol', 1e-5, 'AbsTol', 1e-7);
-[~, X3]  = ode15s(@(t, x) Modell3_woEtOH(t, x, u, p_guess, DOTstern), t_sim, x0, options);
+X3 = sim_m3_sample(t_sim, x0, u, p_guess, DOTstern, Probe);
 
 V    = X3(:,1);
 cX   = X3(:,2)./V;   % Biomasse [g/L]

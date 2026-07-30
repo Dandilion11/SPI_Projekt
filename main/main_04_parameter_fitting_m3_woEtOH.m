@@ -1,7 +1,7 @@
 %% main_04_parameter_fitting_m3_woEtOH.m
 %  Parameterfitting Modell 3 (Fed-Batch, ohne Ethanol).
-%  Training:    TrainData (RamScDef10)
-%  Validierung: ValData   (RamScDef07)
+%  Training:    TrainData
+%  Validierung: ValData
 %  Fit ausschliesslich auf TrainData; ValData wird nur mit den gefitteten
 %  Parametern simuliert und verglichen (fliesst NICHT in fmincon ein).
 % =========================================================================
@@ -11,12 +11,17 @@ clear; clc; close all;
 projectRoot = pwd;
 load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_FedBatch_Modell3.mat'));
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+addpath(fullfile(projectRoot, '..','utils'),'-begin');
 rehash; clear Modell3_woEtOH
+
+TrainProbe = TrainDataProbe;
+ValProbe = ValDataProbe;
 
 u  = TrainData.u;
 x0 = TrainData.x0;             % [V; mX; mGlc; mAm; mPh; mB; DOT]
 
 % 1. Anfangswerte und Parameter
+
 namen = {'mumax','KS','YXS', 'YAmX','YPhX','YB_Am','KLa','YXO'};
 p0 =    [0.30,   0.50, 0.15,  0.05,  0.02,  1.0,     200,  1.0];
 pLB =   [0.01,   0.01, 0.05, 0.001, 0.001,  0.1,     10,   0.1];
@@ -26,11 +31,11 @@ pUB =   [1.00,   5.00, 1.00, 1.000, 1.000,  5.0,     800,  5.0];
 options = optimoptions('fmincon', 'Display', 'iter', 'Algorithm', 'sqp', ...
                        'MaxFunctionEvaluations', 5000, ...
                        'FiniteDifferenceType', 'central', ...
-                       'FiniteDifferenceStepSize', 1e-6, ...
+                       'FiniteDifferenceStepSize', sqrt(eps), ... % geändert statt 1e-6
                        'OptimalityTolerance', 1e-8, ...
-                       'StepTolerance', 1e-10);
+                       'StepTolerance', 1e-10,'ScaleProblem','obj-and-constr');
 
-obj_fun = @(p) wls_error_m3(p, x0, u, TrainData);
+obj_fun = @(p) wls_error_m3(p, x0, u, TrainData, TrainProbe);
 [p_opt, fval] = fmincon(obj_fun, p0, [], [], [], [], pLB, pUB, [], options);
 
 % 3. Ausgabe (Training) + Validierung
@@ -40,7 +45,7 @@ for i = 1:numel(p_opt)
     fprintf('%-8s = %.4f\n', namen{i}, p_opt(i));
 end
 % Validierungsfehler mit demselben p_opt auf ValData (eigenes u, x0, DOTstern)
-fval_val = wls_error_m3(p_opt, ValData.x0, ValData.u, ValData);
+fval_val = wls_error_m3(p_opt, ValData.x0, ValData.u, ValData, ValProbe);
 fprintf('WLS-Fehler (Validierung): %.4f\n', fval_val);
 
 scriptDir = pwd;
@@ -48,21 +53,20 @@ saveDir   = fullfile(scriptDir, '..', 'Daten');
 save(fullfile(saveDir, 'p_opt_Modell3_woEtOH.mat'), 'p_opt');
 
 % 4. Visualisierung: Training UND Validierung
-plot_fit_m3(TrainData, p_opt, 'Modell3 | Training (RamScDef10)');
-plot_fit_m3(ValData,   p_opt, 'Modell3 | Validierung (RamScDef07)');
+plot_fit_m3(TrainData, p_opt, 'Modell3 | Training (RamScDef10)', TrainProbe);
+plot_fit_m3(ValData,   p_opt, 'Modell3 | Validierung (RamScDef07)',ValProbe);
 
 
 %% ======================================================================
 %% Visualisierung
 %% ======================================================================
-function plot_fit_m3(Data, p, titel)
+function plot_fit_m3(Data, p, titel, Probe)
     u = Data.u;  x0 = Data.x0;  DOTstern = max(Data.O2.y);
 
     t_start = u(1,1);
     t_end   = max(Data.Biomasse.t(:)) + 1;
     t_sim   = linspace(t_start, t_end, 300);
-    [~, X3] = ode15s(@(t,x) Modell3_woEtOH(t,x,u,p,DOTstern), ...
-                     t_sim, x0, odeset('RelTol',1e-5,'AbsTol',1e-7));
+    X3 = sim_m3_sample(t_sim, x0, u, p, DOTstern, Probe);
 
     V   = X3(:,1);
     cX  = X3(:,2)./V;   cGlc = X3(:,3)./V;   cAm = X3(:,4)./V;
@@ -87,13 +91,11 @@ function plot_row(row, mess, t_sim, y_sim, name, ylab)
 end
 
 
-%% ======================================================================
-%% WLS-Guetefunktion
-%% ======================================================================
-function J = wls_error_m3(p, x0, u, Data)
-% WLS fuer Modell3 ohne Ethanol.
-% Zustaende: x = [V; mX; mGlc; mAm; mPh; mB; DOT]
-% Messgroessen: Biomasse->mX/V, Glucose->mGlc/V, Ammonium->mAm/V,
+%% WLS-Gütefunktional
+function J = wls_error_m3(p, x0, u, Data, Probe)
+% WLS für Modell3 ohne Ethanol.
+% Zustände: x = [V; mX; mGlc; mAm; mPh; mB; DOT]
+% Messgrössen: Biomasse->mX/V, Glucose->mGlc/V, Ammonium->mAm/V,
 %               Phosphat->mPh/V, Base->mB, DOT->DOT.
     M = { Data.Biomasse, 'Biomasse',  2, true;   ...
           Data.Glucose,  'Glucose',   3, true;   ...
@@ -102,7 +104,7 @@ function J = wls_error_m3(p, x0, u, Data)
           Data.Base,     'Base',      6, false;  ...
           Data.O2,       'DOT',       7, false   };
     wmode = 'mean';
-    wsig  = [1, 1, 1, 1, 1, 1];
+    wsig  = [1, 1, 1, 1, 1, 1]; %händische Gewichtungsmöglichkeit
 
     DOTstern = max(Data.O2.y);
 
@@ -110,14 +112,12 @@ function J = wls_error_m3(p, x0, u, Data)
     for i = 1:size(M,1)
         t_all = [t_all; M{i,1}.t(:)];
     end
-    % Feed-Sprungzeiten zusaetzlich aufnehmen
+    % Feed-Sprungzeiten zusätzlich aufnehmen
     tu = u(1,:).';
     tu = tu(tu >= min(t_all) & tu <= max(t_all));
     t_all = unique([t_all; tu]);
-
-    opts = odeset('RelTol', 1e-7, 'AbsTol', 1e-9);
     try
-        [~, X] = ode15s(@(t,x) Modell3_woEtOH(t, x, u, p, DOTstern), t_all, x0, opts);
+    X = sim_m3_sample(t_all, x0, u, p, DOTstern, Probe);
     catch
         J = 1e8; return;
     end
@@ -131,7 +131,7 @@ function J = wls_error_m3(p, x0, u, Data)
         mess = M{i,1}; name = M{i,2}; idxState = M{i,3}; divByV = M{i,4};
         if isempty(mess.t), continue; end
         [tf, iT] = ismember(mess.t(:), t_all);
-        if any(~tf), warning('Messzeitpunkt fuer %s nicht gefunden.', name); J = 1e8; return; end
+        if any(~tf), warning('Messzeitpunkt für %s nicht gefunden.', name); J = 1e8; return; end
         y_sim = X(iT, idxState);
         if divByV, y_sim = y_sim ./ V(iT); end
         r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
@@ -143,3 +143,4 @@ function J = wls_error_m3(p, x0, u, Data)
     end
     if ~isfinite(J), J = 1e8; end
 end
+

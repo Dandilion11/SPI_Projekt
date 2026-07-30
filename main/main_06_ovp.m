@@ -12,8 +12,8 @@ p_opt_m3 = p_opt;
 x0_m3    = TrainData.x0;  
 
 %% 2. Konfiguration der Versuchsplanung (VP)
-ab = [0.02 0.015; 0.06 0.25; 0.06 0.01; 0.07 0.01; 0.01 10; 0.02 0.5];
-c_nom = [5; 2; 0.5; 0.2; 50; 60]; % repräsentative Konz. [g/L, g/L, g/L, g/L, mL, %]
+ab = [0.02 0.015; 0.06 0.25; 0.06 0.01; 0.07 0.01; 0.01 0.01; 0.02 0.5];
+c_nom = [5; 2; 0.5; 0.2; 0.05; 60]; % repräsentative Konz. [g/L, g/L, g/L, g/L, L, %]
 sigma_nom = (ab(:,1).*c_nom + ab(:,2)).^2;
 C    = diag(sigma_nom);
 invC = inv(C);

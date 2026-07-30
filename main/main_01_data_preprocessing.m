@@ -84,3 +84,14 @@ else
     s.var = (ab(1) .* s.y + ab(2)).^2;
 end
 end
+
+function probe = probenahme(Data, tMax)
+
+    t = Data.Probenahmen.BatchAge;
+
+    idx = t <= tMax;
+
+    probe.t = t(idx);
+    probe.V = Data.Probenahmen.Volumen(idx);
+
+end

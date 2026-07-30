@@ -6,26 +6,28 @@ clear; clc; close all;
 filepath = pwd;
 datenordner = fullfile(filepath, '..', 'Daten', 'MessDaten_SPI1_Projekt');
 
-train = load(fullfile(datenordner, 'Mess_RamScDef10.mat')).Mess;   % zum Trainieren
-val   = load(fullfile(datenordner, 'Mess_RamScDef07.mat')).Mess;   % zum Validieren
+train = load(fullfile(datenordner, 'Mess_RamScDef03.mat')).Mess;   % zum Trainieren
+val   = load(fullfile(datenordner, 'Mess_RamScDef04.mat')).Mess;   % zum Validieren
 
 % a/b aus dem Krämer und King 2017 Paper
 ab.Biomasse = [0.02  0.015];
 ab.Glucose  = [0.06  0.25 ];
 ab.Ammonium = [0.06  0.01 ];
 ab.Phosphat = [0.07  0.01 ];
-ab.O2       = [0.02  0.5  ]; % Muss nochmal recherchiert werden. Steht nicht in Krämer und King
-ab.Base     = [0.01  10   ];
+ab.O2       = [0.2    0.5  ]; % Muss nochmal recherchiert werden. Steht nicht in Krämer und King
+ab.Base     = [0.01  0.01 ]; % Base steht in der Doku mit 0.01 und 10 aber Einheit ist in mL angegeben und im Modell wird nur mit L gerechnet
 
 % Training und Validierung mit derselben Routine aufbereiten
 TrainData = aufbereiten(train, ab);
+TrainDataProbe = train.Probenahmen;
 ValData   = aufbereiten(val,   ab);
+ValDataProbe = val.Probenahmen;
 
 % speichern
 zielordner = fullfile(filepath, '..', 'Daten', 'Daten_Processed');
 if ~exist(zielordner, 'dir'); mkdir(zielordner); end
 ziel = fullfile(zielordner, 'Processed_FedBatch_Modell3.mat');
-save(ziel, 'TrainData', 'ValData');
+save(ziel, 'TrainData', 'ValData', "TrainDataProbe", "ValDataProbe");
 
 fprintf('Fertig. Gespeichert unter:\n%s\n', ziel);
 
@@ -83,4 +85,6 @@ s.y   = y;
 % s.var = feld.Variance(:);
 % end
 s.var = (ab(1).*y + ab(2)).^2;
+
+
 end
