@@ -21,8 +21,9 @@ load(loadPath);
 Data = TrainData; % Geht auch ValData -> zum schnelleren wechseln
 Probe = TrainDataProbe;
 % Anfangswerte und Parameter
-%   [mumax,KS,YXS,YAmX,YPhX,YB_Am, KLa, YXO]
-p_guess = [0.3, 0.5, 0.15, 0.05, 0.02, 1.0, 200, 1.0];
+%   [mumax,KS,YXS,YAmX,YPhX,YB_Am, KLa, YXO] KAM hinzugefügt am Ende
+%   nach Hinweis von Janne
+p_guess = [0.3, 0.5,0.15, 0.05, 0.02, 1.0, 200, 1.0, 0.5];
 x0 = Data.x0;
 u = Data.u;
 

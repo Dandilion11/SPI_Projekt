@@ -13,6 +13,7 @@ clear; clc; close all;
 projectRoot = pwd;
 load(fullfile(projectRoot,'..','Daten/Daten_Processed/Processed_FedBatch_Modell3.mat'));
 addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+addpath(fullfile(projectRoot, '..','utils'),'-begin');
 rehash; clear Modell3_woEtOH
 
 Data = TrainData;
@@ -88,8 +89,9 @@ for k = 1:size(Pstart,1)
         if Jk < fval
             fval = Jk;  p_opt = pk;
         end
-    catch
-        % ungueltiger Start (z.B. ODE divergiert) -> ueberspringen
+    catch Me
+        fprintf('\nStart %d fehlgeschlagen:\n',k);
+        fprintf('%s\n',Me.getReport);
     end
 end
 
@@ -142,7 +144,7 @@ if isempty(idxFeed_val), t_feed_val = u_val(1,1); else, t_feed_val = u_val(1, id
 
 % Validierungsfehler: nur Punkte ab Feed (vergleichbar zum Training)
 ValFit   = window_data(ValData, t_feed_val, t_hi);
-fval_val = wls_error_m3(p_opt, x0_val, u_val, ValFit);
+fval_val = wls_error_m3(p_opt, x0_val, u_val, ValFit, Probe_val);
 fprintf('WLS-Fehler (Validierung, ab Feed t=%.3f h): %.4f\n', t_feed_val, fval_val);
 
 % Simulation Validierung ueber den VOLLEN Horizont (ab x0 bei u(1,1))
@@ -193,76 +195,59 @@ function report_window(Dfull, Dcut)
 end
 
 
+%% WLS-Gütefunktional
 function J = wls_error_m3(p, x0, u, Data, Probe)
-% WLS über alle Messgrößen. Eine Simulation über das vereinigte
-% Zeitraster, danach Zuordnung zu den jeweiligen Messzeitpunkten.
-% Die Integration startet immer bei t0 = u(1,1) mit x0, unabhaengig
-% davon, ab wann Messpunkte bewertet werden.
-
-    M = { Data.Biomasse, 2, true;   ...
-          Data.Glucose,  3, true;   ...
-          Data.Ammonium, 4, true;   ...
-          Data.Phosphat, 5, true;   ...
-          Data.Base,     6, false;  ...   % mB direkt
-          Data.O2,       7, false;  ...   % DOT direkt
-          };
-
-    % ---- Gewichtung pro Signal ---------------------------------------
-    % wmode = 'sum'  -> klassische WLS: jeder Punkt zaehlt einzeln.
-    %                   Dichte Online-Signale (DOT, Base) dominieren.
-    % wmode = 'mean' -> jeder Signal-Beitrag wird durch seine Punktzahl
-    %                   n_i geteilt -> jedes Signal zaehlt gleich stark,
-    %                   egal wie dicht abgetastet. Gegen DOT-Overfitting.
-    wmode = 'mean';
-    % Zusaetzlicher Handregler pro Signal (Reihenfolge wie M):
-    %        [Bio  Glc  Am   Ph   Base  DOT]
-    wsig =   [ 1    1    1    1    1     1  ];   % z.B. DOT auf 0.5 -> weiter abschwaechen
-    % ------------------------------------------------------------------
+% WLS für Modell3 ohne Ethanol.
+% Zustände: x = [V; mX; mGlc; mAm; mPh; mB; DOT]
+% Messgrössen: Biomasse->mX/V, Glucose->mGlc/V, Ammonium->mAm/V,
+%               Phosphat->mPh/V, Base->mB, DOT->DOT.
+    M = { Data.Biomasse, 'Biomasse',  2, true;   ...
+          Data.Glucose,  'Glucose',   3, true;   ...
+          Data.Ammonium, 'Ammonium',  4, true;   ...
+          Data.Phosphat, 'Phosphat',  5, true;   ...
+          Data.Base,     'Base',      6, false;  ...
+          Data.O2,       'DOT',       7, false   };
+    wmode = 'sum';
+    wsig  = [1, 1, 1, 1, 1, 0.01]; %händische Gewichtungsmöglichkeit
 
     DOTstern = max(Data.O2.y);
 
-    % Vereinigtes Zeitraster (inkl. Startzeit t0)
-    t0 = u(1,1);
-    t_all = t0;
+    t_all = [];
     for i = 1:size(M,1)
         t_all = [t_all; M{i,1}.t(:)];
     end
-    t_all = unique(t_all);
-    if t_all(1) > t0, t_all = [t0; t_all]; end
+    % Feed-Sprungzeiten zusätzlich aufnehmen
+    tu = u(1,:).';
+    tu = tu(tu >= min(t_all) & tu <= max(t_all));
+    t_all = unique([t_all; tu]);
     try
-        X = sim_m3_sample(t_all, x0, u, p, DOTstern, Probe);
+    X = sim_m3_sample(t_all, x0, u, p, DOTstern, Probe);
     catch
-        print("Fehler in der Simulation")
         J = 1e8; return;
     end
-        
     if size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))
-        print("size(X,1) ~= numel(t_all) || any(~isfinite(X(:)))")
         J = 1e8; return;
     end
 
     V = X(:,1);
     J = 0;
     for i = 1:size(M,1)
-        mess = M{i,1};  idxState = M{i,2};  divByV = M{i,3};
-        [~, iT] = ismember(mess.t(:), t_all);
-
-        y_sim = X(iT, idxState);
-        if divByV
-            y_sim = y_sim ./ V(iT);
-        end
-        contrib = sum(((mess.y(:) - y_sim).^2) ./ mess.var(:).^2);
-        if strcmp(wmode, 'mean')
-            contrib = contrib / max(numel(mess.y), 1);   % durch Punktzahl teilen
+        mess = M{i,1}; name = M{i,2}; idxState = M{i,3}; divByV = M{i,4};
+        if isempty(mess.t), continue; end % Messreihe übersprungen, falls keine Daten vorhanden sind
+        [tf, iT] = ismember(mess.t(:), t_all); % Prüfen, , ob alle Messzeitpunkte auch in den Simulationszeitpunkten vorkommen
+        if any(~tf), warning('Messzeitpunkt für %s nicht gefunden.', name); J = 1e8; return; end
+        y_sim = X(iT, idxState); % iT enthält Positionen der Messzeiten in t_all
+        if divByV, y_sim = y_sim ./ V(iT); end
+        r = (mess.y(:) - y_sim) ./ (max(mess.var(:), eps)); % max(), eps verhindert division durch 0
+        switch wmode
+            case 'sum',  contrib = sum(r.^2); % einfach aufsummeieren
+            case 'mean', contrib = mean(r.^2); % noch 1/n teilen, damit unterschiedlich viele Messwerte ergebnis nicht verfälschen
         end
         J = J + wsig(i) * contrib;
     end
-
-    if ~isfinite(J)
-        print("J ist unendlich")
-        J = 1e8; 
-    end
+    if ~isfinite(J), J = 1e8; end
 end
+
 
 
 function plot_row(row, mess, t_sim, y_sim, name, ylab, t_feed, t_hi)

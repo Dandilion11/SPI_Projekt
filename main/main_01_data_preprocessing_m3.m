@@ -6,16 +6,18 @@ clear; clc; close all;
 filepath = pwd;
 datenordner = fullfile(filepath, '..', 'Daten', 'MessDaten_SPI1_Projekt');
 
-train = load(fullfile(datenordner, 'Mess_RamScDef03.mat')).Mess;   % zum Trainieren
-val   = load(fullfile(datenordner, 'Mess_RamScDef04.mat')).Mess;   % zum Validieren
-
+train = load(fullfile(datenordner, 'Mess_RamScDef07.mat')).Mess;   % zum Trainieren
+val   = load(fullfile(datenordner, 'Mess_RamScDef10.mat')).Mess;   % zum Validieren
+ab = []; 
 % a/b aus dem Krämer und King 2017 Paper
-ab.Biomasse = [0.02  0.015];
-ab.Glucose  = [0.06  0.25 ];
-ab.Ammonium = [0.06  0.01 ];
-ab.Phosphat = [0.07  0.01 ];
-ab.O2       = [0.2    0.5  ]; % Muss nochmal recherchiert werden. Steht nicht in Krämer und King
-ab.Base     = [0.01  0.01 ]; % Base steht in der Doku mit 0.01 und 10 aber Einheit ist in mL angegeben und im Modell wird nur mit L gerechnet
+% ab.Biomasse = [0.02  0.015];
+% ab.Glucose  = [0.06  0.25 ];
+% ab.Ammonium = [0.06  0.01 ];
+% ab.Phosphat = [0.07  0.01];
+% ab.O2       = [0    0.5]; % Muss nochmal recherchiert werden. Steht nicht in Krämer und King
+% ab.Base     = [0.01  0.01]; % Base steht in der Doku mit 0.01 und 10 aber Einheit ist in mL angegeben und im Modell wird nur mit L gerechnet
+
+
 
 % Training und Validierung mit derselben Routine aufbereiten
 TrainData = aufbereiten(train, ab);
@@ -37,12 +39,21 @@ function D = aufbereiten(Mess, ab)
 
 M = Mess.Messdaten;
 % Messgroessen einlesen (Zeit in h, Wert in g/L bzw. % bei O2)
-D.Biomasse = messwert(M.Biomasse, ab.Biomasse, "Biomasse");
-D.Glucose  = messwert(M.Glucose,  ab.Glucose, "Glucose");
-D.Ammonium = messwert(M.Ammonium, ab.Ammonium, "Ammonium");
-D.Phosphat = messwert(M.Phosphat, ab.Phosphat, "Phosphat");
-D.O2       = messwert(M.O2,       ab.O2, "O2");     % = DOT in %
-D.Base     = messwert(M.BASE,     ab.Base, "Base");
+% D.Biomasse = messwert(M.Biomasse, ab.Biomasse, "Biomasse");
+% D.Glucose  = messwert(M.Glucose,  ab.Glucose, "Glucose");
+% D.Ammonium = messwert(M.Ammonium, ab.Ammonium, "Ammonium");
+% D.Phosphat = messwert(M.Phosphat, ab.Phosphat, "Phosphat");
+% D.O2       = messwert(M.O2,       ab.O2, "O2");     % = DOT in %
+% D.Base     = messwert(M.BASE,     ab.Base, "Base");
+
+% Berechnung der Varianz aus Parametern aus Messwerten und nicht aus
+% Literatur
+D.Biomasse = messwert(M.Biomasse, [M.Biomasse.VarParam.a M.Biomasse.VarParam.b], "Biomasse");
+D.Glucose  = messwert(M.Glucose,  [M.Glucose.VarParam.a M.Glucose.VarParam.b], "Glucose");
+D.Ammonium = messwert(M.Ammonium, [M.Ammonium.VarParam.a M.Ammonium.VarParam.b], "Ammonium");
+D.Phosphat = messwert(M.Phosphat, [M.Phosphat.VarParam.a M.Phosphat.VarParam.b], "Phosphat");
+D.O2       = messwert(M.O2,       [M.O2.VarParam.a M.O2.VarParam.b], "O2");     % = DOT in %
+D.Base     = messwert(M.BASE,     [M.BASE.VarParam.a M.BASE.VarParam.b], "Base");
 
 % Volumen (Dichte 1 kg/L angenommen -> V[L] = Gewicht[kg])
 D.V.t = M.Weight.BatchAge(:);
@@ -84,7 +95,12 @@ s.y   = y;
 % else
 % s.var = feld.Variance(:);
 % end
-s.var = (ab(1).*y + ab(2)).^2;
-
+s.var = (ab(1).*y + ab(2));
+if name == "Base"
+    s.var = s.var/1000; % von mL in L
+end
+if name == "O2"
+    s.var = s.var(:)*100; % Umrechnung in %
+end
 
 end

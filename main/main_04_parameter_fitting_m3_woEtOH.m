@@ -20,7 +20,8 @@ ValProbe = ValDataProbe;
 u  = TrainData.u;
 x0 = TrainData.x0;             % [V; mX; mGlc; mAm; mPh; mB; DOT]
 
-% 1. Anfangswerte und Parameter
+% 1. Anfangswerte und Parameter % KAm hinzugefügt nach Hinweis von Janne
+% als Grenze für den Wachstum von Glc sobals
 
 namen = {'mumax','KS','YXS', 'YAmX','YPhX','YB_Am','KLa','YXO'};
 p0 =    [0.30,   0.50, 0.15,  0.05,  0.02,  1.0,     200,  1.0];
@@ -103,8 +104,8 @@ function J = wls_error_m3(p, x0, u, Data, Probe)
           Data.Phosphat, 'Phosphat',  5, true;   ...
           Data.Base,     'Base',      6, false;  ...
           Data.O2,       'DOT',       7, false   };
-    wmode = 'mean';
-    wsig  = [1, 1, 1, 1, 1, 1]; %händische Gewichtungsmöglichkeit
+    wmode = 'sum';
+    wsig  = [1, 1, 1, 1, 1, 0.01]; %händische Gewichtungsmöglichkeit
 
     DOTstern = max(Data.O2.y);
 
@@ -129,15 +130,15 @@ function J = wls_error_m3(p, x0, u, Data, Probe)
     J = 0;
     for i = 1:size(M,1)
         mess = M{i,1}; name = M{i,2}; idxState = M{i,3}; divByV = M{i,4};
-        if isempty(mess.t), continue; end
-        [tf, iT] = ismember(mess.t(:), t_all);
+        if isempty(mess.t), continue; end % Messreihe übersprungen, falls keine Daten vorhanden sind
+        [tf, iT] = ismember(mess.t(:), t_all); % Prüfen, , ob alle Messzeitpunkte auch in den Simulationszeitpunkten vorkommen
         if any(~tf), warning('Messzeitpunkt für %s nicht gefunden.', name); J = 1e8; return; end
-        y_sim = X(iT, idxState);
+        y_sim = X(iT, idxState); % iT enthält Positionen der Messzeiten in t_all
         if divByV, y_sim = y_sim ./ V(iT); end
-        r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
+        r = (mess.y(:) - y_sim) ./ (max(mess.var(:), eps)); % max(), eps verhindert division durch 0
         switch wmode
-            case 'sum',  contrib = sum(r.^2);
-            case 'mean', contrib = mean(r.^2);
+            case 'sum',  contrib = sum(r.^2); % einfach aufsummeieren
+            case 'mean', contrib = mean(r.^2); % noch 1/n teilen, damit unterschiedlich viele Messwerte ergebnis nicht verfälschen
         end
         J = J + wsig(i) * contrib;
     end
