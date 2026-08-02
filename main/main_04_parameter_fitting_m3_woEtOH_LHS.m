@@ -76,7 +76,7 @@ Jscreen = inf(N_lhs,1);
 for k = 1:N_lhs
     try, Jscreen(k) = obj_fun(P(k,:)); catch, end
 end
-[~, order] = sort(Jscreen);
+[~, order] = sort(Jscreen); %Fehler sortieren - > Vielversprechendsten werden dann danach ausgewählt
 Pstart = [p0; P(order(1:K_opt), :)];   % alter Startpunkt + beste K aus LHS
 
 % 2) fmincon nur von den vielversprechendsten Startpunkten
@@ -238,6 +238,7 @@ function J = wls_error_m3(p, x0, u, Data, Probe)
         if any(~tf), warning('Messzeitpunkt für %s nicht gefunden.', name); J = 1e8; return; end
         y_sim = X(iT, idxState); % iT enthält Positionen der Messzeiten in t_all
         if divByV, y_sim = y_sim ./ V(iT); end
+        % Formel für cost function aus Krämer 2017 Gl. 1
         r = (mess.y(:) - y_sim) ./ (max(mess.var(:), eps)); % max(), eps verhindert division durch 0
         switch wmode
             case 'sum',  contrib = sum(r.^2); % einfach aufsummeieren
