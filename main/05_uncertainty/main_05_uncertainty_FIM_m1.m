@@ -3,10 +3,10 @@ clear; clc; close all;
 
 %% 1. Daten und optimierte Parameter laden
 scriptDir = pwd;
-loadPath_processed  = fullfile(scriptDir, '..', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
+loadPath_processed  = fullfile(scriptDir, '..', 'Matlab_Code',  'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat');
 load(loadPath_processed);
 
-loadPath_processed  = fullfile(scriptDir, '..', 'Daten', 'p_opt.mat');
+loadPath_processed  = fullfile(scriptDir, '..','Matlab_Code',  'Daten', 'p_opt', 'p_opt.mat');
 p_opt = (load(loadPath_processed));
 p_opt = p_opt.p_opt;
 

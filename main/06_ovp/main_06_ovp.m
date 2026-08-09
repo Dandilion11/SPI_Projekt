@@ -5,8 +5,8 @@ clear; clc; close all;
 %% 1. Laden der Ergebnisse aus der Parameteridentifikation (PI)
 % Benötigt: p_opt_m3, x0_m3, invC (Messunsicherheit)
 % Hier Platzhalter bis PI von Modell 3 vorliegt:
-load(fullfile(pwd,'..','Daten','p_opt_Modell3_woEtOH.mat'));
-load(fullfile(pwd,'..','Daten','Daten_Processed','Processed_FedBatch_Modell3.mat'))
+load(fullfile(pwd,'Daten','p_opt', 'p_opt_Modell3_woEtOH.mat'));
+load(fullfile(pwd,'..', 'Daten','Daten_Processed','Processed_FedBatch_Modell3.mat'))
 addpath (fullfile(pwd,'..','\utils'))
 p_opt_m3 = p_opt;
 x0_m3    = TrainData.x0;  

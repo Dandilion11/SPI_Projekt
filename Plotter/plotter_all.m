@@ -3,8 +3,9 @@ clc;
 close all;  
 
 %% 2. Pfad-Management und Daten laden
-scriptDir = fileparts(mfilename('fullpath'));
-ordnerName = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt'); 
+
+filepath = pwd;
+ordnerName = fullfile(filepath, 'Daten', 'MessDaten_SPI1_Projekt'); 
 dateien = dir(fullfile(ordnerName, '*.mat'));
 alleExperimente = cell(1, length(dateien));
 

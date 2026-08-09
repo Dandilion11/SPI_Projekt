@@ -8,7 +8,7 @@
 clear; clc; close all;
 
 projectRoot = pwd;
-load(fullfile(projectRoot, '..', 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat'));
+load(fullfile(projectRoot, 'Daten', 'Daten_Processed', 'Processed_Batch_Data.mat'));
 addpath(fullfile(projectRoot, '..', 'Modelle'), '-begin');
 rehash; clear Modell1 Modell2
 
@@ -47,7 +47,7 @@ if withOxygen, x0_val = [x0_val; ValData.O2.y(1)]; end
 fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
         calculate_wls_error(p_opt, x0_val, ValData, kinetic, withOxygen));
 
-save(fullfile(projectRoot, '..', 'Daten', 'p_opt.mat'), 'p_opt');
+save(fullfile(projectRoot, 'Daten','p_opt', 'p_opt.mat'), 'p_opt');
 
 plot_m1(TrainData, p_opt, kinetic, withOxygen, 'Modell1 | Training RamScDef03');
 plot_m1(ValData,   p_opt, kinetic, withOxygen, 'Modell1 | Validierung RamScDef04');
@@ -80,7 +80,7 @@ x0_val_m2 = [ValData.Biomasse.y(1); ValData.Glucose.y(1); ...
 fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
         calculate_wls_error_m2(p_opt_m2, x0_val_m2, ValData, kinetic));
 
-save(fullfile(projectRoot, '..', 'Daten', 'p_opt_Modell2.mat'), 'p_opt_m2');
+save(fullfile(projectRoot, 'Daten', 'p_opt', 'p_opt_Modell2.mat'), 'p_opt_m2');
 
 plot_m2(TrainData, p_opt_m2, kinetic, 'Modell2 | Training RamScDef03');
 plot_m2(ValData,   p_opt_m2, kinetic, 'Modell2 | Validierung RamScDef04');

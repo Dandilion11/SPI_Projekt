@@ -20,8 +20,8 @@ tCut_04 = 8;    % Validierung RamScDef04
 
 % 1. Pfade
 scriptDir = pwd;
-pfad_03 = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef03.mat');
-pfad_04 = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef04.mat');
+pfad_03 = fullfile(scriptDir, 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef03.mat');
+pfad_04 = fullfile(scriptDir, 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef04.mat');
 
 % 2. Laden
 exp_03 = load(pfad_03).Mess;
@@ -48,11 +48,12 @@ ValData.O2       = messwert(exp_04.Messdaten.O2,        ab.O2,       "O2",      
 ValData.Ammonium = messwert(exp_04.Messdaten.Ammonium, ab.Ammonium, "Ammonium", useMeasuredVar, tCut_04);
 ValData.Base     = messwert(exp_04.Messdaten.BASE,      ab.Base,     "Base",     useMeasuredVar, tCut_04);
 
+
 TrainData.V = exp_03.Messdaten.Weight.Wert(1);
 ValData.V   = exp_04.Messdaten.Weight.Wert(1);
 
 % 6. Speichern
-saveDir = fullfile(scriptDir, '..', 'Daten', 'Daten_Processed');
+saveDir = fullfile(scriptDir, 'Daten', 'Daten_Processed');
 if ~exist(saveDir, 'dir'); mkdir(saveDir); end
 savePath = fullfile(saveDir, 'Processed_Batch_Data.mat');
 save(savePath, 'TrainData', 'ValData');
@@ -61,7 +62,6 @@ fprintf('Training RamScDef03 (t <= %.0f h): %d Biomasse-Punkte\n', tCut_03, nume
 fprintf('Validierung RamScDef04 (t <= %.0f h): %d Biomasse-Punkte\n', tCut_04, numel(ValData.Biomasse.t));
 
 
-%% ---------------------------------------------------------------
 function s = messwert(feld, ab, name, useMeasuredVar, tMax)
 % Filtert auf die Batch-Phase (t <= tMax) und liefert die Messvarianz.
 t = feld.BatchAge(:);
@@ -95,3 +95,4 @@ function probe = probenahme(Data, tMax)
     probe.V = Data.Probenahmen.Volumen(idx);
 
 end
+

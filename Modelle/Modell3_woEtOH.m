@@ -4,7 +4,7 @@ function dxdt = Modell3_woEtOH(t, x, u, p, DOTstern)
 %Ethanol ist in den Messwerten immer 0 und wurde nicht über die ganze
 %Messdauer aufgezeichnet deshalb die Version ohne EtOH
 
-x = max(x, 0);
+%x = max(x, 0);
 
 % Nach Input struct     % Zustände entsprechend des
 % aus Preprocessing     % Mess.Messdaten-Structs                 
