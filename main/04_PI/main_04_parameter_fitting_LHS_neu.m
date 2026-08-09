@@ -203,6 +203,8 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec)
     nch      = nK;
     DOTstern = max(D.O2.y);
     dt_min   = 1.0;    % h, Ausduennung der Base vor dem Differenzieren
+    useBaseIncrements = true;   % false -> Base wird absolut bewertet
+    %          (nur fuer den Vergleich)
 
     % Ein ODE-Lauf fuer alle Kanaele, ausgewertet an allen Messzeiten
     t_all = [];
@@ -224,7 +226,7 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec)
         [~, iT] = ismember(mess.t(:), t_all);
         y_sim = X(iT, spec{i,2});
 
-        if strcmp(name,'Base')
+        if useBaseIncrements && strcmp(name,'Base')
             % Bei ~0.2 h Abstand waere das Inkrement kleiner als sein
             % eigenes Rauschen -> vorher ausduennen.
             keep = subsample_idx(mess.t, dt_min);

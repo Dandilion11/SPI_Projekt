@@ -262,8 +262,7 @@ function [FM, X, t_sim] = fim_design(uq, VP, nx, np)
             yv(k)   = yk(iOut);
         end
 
-        % sigma^2 = a*y + b auf der SIMULIERTEN Groesse. Umrechnung wie im
-        % Preprocessing: Varianz skaliert quadratisch mit der Einheit.
+        % sigma^2 = a*y + b auf der SIMULIERTEN Groesse
         a = VP.ab(kan{i,3},1);   b = VP.ab(kan{i,3},2);
         switch iOut
             case 5, v = a.*yv/1000 + b/1e6;     % Base: mL -> L
@@ -272,12 +271,28 @@ function [FM, X, t_sim] = fim_design(uq, VP, nx, np)
         end
         v = max(v, eps);
 
-        % Mittelung pro Kanal -- gleiche Konvention wie im Guetefunktional
-        for k = 1:n
-            FM = FM + (Sy(k,:).' * Sy(k,:)) / v(k) / n;
+        if iOut == 5
+            % Base als INKREMENT, exakt wie in FM_alt (main_05). Sonst
+            % werden zwei Matrizen mit unterschiedlicher Konvention addiert.
+            keep = subsample_idx(kan{i,2}, 2.0);
+            if nnz(keep) < 3, continue; end
+            dS = diff(Sy(keep,:), 1, 1);
+            vk = v(keep);
+            vd = vk(2:end) + vk(1:end-1);
+            m  = size(dS,1);
+            for k = 1:m
+                FM = FM + (dS(k,:).' * dS(k,:)) / vd(k) / m;
+            end
+        else
+            % Mittelung pro Kanal -- gleiche Konvention wie im Guetefunktional
+            for k = 1:n
+                FM = FM + (Sy(k,:).' * Sy(k,:)) / v(k) / n;
+            end
         end
     end
 end
+
+
 
 
 function X = sim_states(uq, VP)
@@ -375,3 +390,11 @@ function [relStd, CN, CV] = analyse_fim(FM, p, iFree)
     en = sort(eig(Fn),'descend');
     CN = en(1)/en(end);
 end
+
+    function keep = subsample_idx(t, dt_min)
+        % Waehlt Punkte mit mindestens dt_min Abstand (erster Punkt immer dabei).
+        keep = false(numel(t),1);  last = -inf;
+        for i = 1:numel(t)
+            if t(i) - last >= dt_min, keep(i) = true;  last = t(i); end
+        end
+    end
