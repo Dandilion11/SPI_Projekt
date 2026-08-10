@@ -38,9 +38,9 @@ wsig = [1 1 1 1 1 1];
 
 %% 3. Parameter -----------------------------------------------------------
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
-p0  =  [ 0.30,  0.50,  0.30,  0.05,  0.02,  0.02,  200,  200,  0.05,  0.05];
-pLB =  [ 0.01,  1e-3,  0.05,  1e-3,  1e-4,  1e-4,  50,   0.1,  3e-3,  0.01];
-pUB =  [ 1.00,  10.0,  1.00,  1.00,  1.00,  1.0,   800,  1e5,  1.0,   0.5 ];
+p0  =  [ 0.30,  0.50,  0.30,  0.05,  0.02,  0.02,  200,  0.6,  0.05,  0.05];
+pLB =  [ 0.01,  1e-3,  0.05,  1e-3,  1e-4,  1e-4,  50,   0.01,  3e-3,  0.01];
+pUB =  [ 1.00,  10.0,  1.00,  1.00,  1.00,  1.0,   800,  10,  1.0,   0.5 ];
 
 % Fixierte Parameter -- pLB == pUB haelt sie in fmincon fest.
 %   KS   : nur in der Batch-Phase identifizierbar -> Wert aus Modell 1.
@@ -50,7 +50,7 @@ pUB =  [ 1.00,  10.0,  1.00,  1.00,  1.00,  1.0,   800,  1e5,  1.0,   0.5 ];
 %   KPh  : nicht identifizierbar, bleiben aber im Modell -- ohne sie
 %          laufen mAm/mPh negativ.
 iFix = [2 7 9 10];
-pFix = [4.29, 1.0, 0.01, 0.01];
+pFix = [4.29, 500, 0.01, 0.01];
 p0(iFix) = pFix;  pLB(iFix) = pFix;  pUB(iFix) = pFix;
 isFree = true(1,numel(p0));  isFree(iFix) = false;
 
@@ -58,7 +58,7 @@ fprintf('Frei: %s\n', strjoin(namen(isFree), ', '));
 fprintf('Fix : %s\n', strjoin(compose('%s=%.4g', string(namen(iFix))', pFix'), ', '));
 
 % Bisher bestes Ergebnis: Startpunkt UND Akzeptanzschwelle.
-pRef = [0.3430 4.29 0.1435 0.0852 0.0837 0.0241 1.0 246.0375 0.01 0.01];
+pRef = [0.3430 4.29 0.1435 0.0852 0.0837 0.0241 500 0.492 0.01 0.01];
 
 options = optimoptions('fmincon', 'Display','iter', 'Algorithm','sqp', ...
                        'MaxFunctionEvaluations', 8000, ...
@@ -338,29 +338,34 @@ end
 
 function plot_experiment(D, p_opt, DOTstern, SIMFUN, titel)
 % Simulation ueber den vollen Horizont, alle sechs Kanaele uebereinander.
+    FS = 14;  % Schriftgroesse fuer Labels und Titel
+    FSA = 14; % Schriftgroesse fuer Achsen-Ticks
+
     t_sim = linspace(D.u(1,1), max([D.Biomasse.t; D.O2.t; D.Base.t])+1, 400);
     X = SIMFUN(t_sim, D.x0, D.u, p_opt, DOTstern, D.Probe);
     V = X(:,1);
 
     figure('Name', titel, 'Position', [200 40 950 1000]);
-    plot_row(1, D.Biomasse, t_sim, X(:,2)./V, 'Biomasse', 'c_X (g/L)');
-    plot_row(2, D.Glucose,  t_sim, X(:,3)./V, 'Glucose',  'c_{Glc} (g/L)');
-    plot_row(3, D.Ammonium, t_sim, X(:,4)./V, 'Ammonium', 'c_{Am} (g/L)');
-    plot_row(4, D.Phosphat, t_sim, X(:,5)./V, 'Phosphat', 'c_{Ph} (g/L)');
-    plot_row(5, D.Base,     t_sim, X(:,6),    'Base',     'm_B (L)');
-    plot_row(6, D.O2,       t_sim, X(:,7),    'DOT',      'DOT (%)');
-    xlabel('BatchAge (h)');
-    sgtitle(titel);
+    plot_row(1, D.Biomasse, t_sim, X(:,2)./V, 'Biomasse', 'c_X (g/L)', FS, FSA);
+    plot_row(2, D.Glucose,  t_sim, X(:,3)./V, 'Glucose',  'c_{Glc} (g/L)', FS, FSA);
+    plot_row(3, D.Ammonium, t_sim, X(:,4)./V, 'Ammonium', 'c_{Am} (g/L)', FS, FSA);
+    plot_row(4, D.Phosphat, t_sim, X(:,5)./V, 'Phosphat', 'c_{Ph} (g/L)', FS, FSA);
+    plot_row(5, D.Base,     t_sim, X(:,6),    'Base',     'm_B (L)', FS, FSA);
+    plot_row(6, D.O2,       t_sim, X(:,7),    'DOT',      'DOT (%)', FS, FSA);
+    xlabel('BatchAge (h)', 'FontSize', FS);
+    sgtitle(titel, 'FontSize', FS);
 end
 
 
-function plot_row(row, mess, t_sim, y_sim, name, ylab)
+function plot_row(row, mess, t_sim, y_sim, name, ylab, FS, FSA)
     subplot(6,1,row);
     errorbar(mess.t, mess.y, sqrt(mess.var), 'o', ...
              'MarkerFaceColor','b','MarkerSize',4); hold on;
     plot(t_sim, y_sim, 'LineWidth', 2);
-    title(name); ylabel(ylab);
-    legend('Messung \pm \sigma','Simulation','Location','best'); grid on;
+    title(name, 'FontSize', FS); ylabel(ylab, 'FontSize', FS);
+    legend('Messung \pm \sigma','Simulation','Location','best', 'FontSize', FS); 
+    set(gca, 'FontSize', FSA);
+    grid on;
 end
 
 

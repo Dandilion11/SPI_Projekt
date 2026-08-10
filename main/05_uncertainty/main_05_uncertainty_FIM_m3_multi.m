@@ -107,10 +107,10 @@ for i = 1:nf
 end
 
 %% 5. Ellipsoid ----------------------------------------------------------
-idx3 = [1 2 3];    % mumax, YXS, YAmX (Positionen innerhalb von iFree)
+idx2 = [2 3];   % mumax, YXS, YAmX (Positionen innerhalb von iFree)
 figure('Name','Parameterunsicherheit Modell 3 (FIM)');
-plot_gaussian_ellipsoid(p_f(idx3), CV(idx3,idx3), 1);
-xlabel('\mu_{max}'); ylabel('Y_{XS}'); zlabel('Y_{AmX}');
+plot_gaussian_ellipsoid(p_f(idx2), CV(idx2,idx2), 1);
+xlabel('Y_{XS}'); ylabel('Y_{AmX}');
 title(sprintf('1\\sigma-Ellipsoid Modell 3 (Kondition = %.2e)', en(1)/en(end)));
 grid on;
 
@@ -165,13 +165,13 @@ function F = fim_one(D, p, DOTstern, nx, np, dt_min)
             vd = vk(2:end) + vk(1:end-1);
             n  = size(dS,1);
             for k = 1:n
-                F = F + (dS(k,:).' * dS(k,:)) / vd(k) / n;
+                F = F + (dS(k,:).' * dS(k,:)) / vd(k); % / n;
             end
         else
             v = max(mess.var(:), eps);
             n = size(Sy,1);
             for k = 1:n
-                F = F + (Sy(k,:).' * Sy(k,:)) / v(k) / n;
+                F = F + (Sy(k,:).' * Sy(k,:)) / v(k);% / n;
             end
         end
     end

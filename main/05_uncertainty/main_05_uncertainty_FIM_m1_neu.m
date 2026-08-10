@@ -72,7 +72,7 @@ for c = 1:size(kanal,1)
     for k = 1:n
         XP_k = reshape(X_ext(idx(k), nx+1:end), nx, np);
         s    = XP_k(kanal{c,3},:).';                 % dy/dtheta  (np x 1)
-        FM   = FM + (s*s.') / max(vc(k),eps) / n;    % /n = Mittelung
+        FM   = FM + (s*s.') / max(vc(k),eps); % / n;    % /n = Mittelung
     end
 end
 
@@ -122,10 +122,10 @@ for i = 1:nf
 end
 
 %% 6. Ellipsoid ----------------------------------------------------------
-idx3 = [1 2 3];      % mumax, KS, YXS
+idx2 = [1 2];      % mumax, KS, YXS
 figure('Name','Parameterunsicherheit Modell 1 (FIM)');
-plot_gaussian_ellipsoid(p_f(idx3), CV(idx3,idx3), 1);
-xlabel('\mu_{max}'); ylabel('K_S'); zlabel('Y_{XS}');
+plot_gaussian_ellipsoid(p_f(idx2), CV(idx2,idx2), 1);
+xlabel('\mu_{max}'); ylabel('K_S');
 title(sprintf('1\\sigma-Ellipsoid Modell 1 (Kondition = %.2e)', en(1)/en(end)));
 grid on;
 

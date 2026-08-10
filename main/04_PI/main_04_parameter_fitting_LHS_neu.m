@@ -44,10 +44,10 @@ RHS2 = @(t,x,p,DS) Modell2(t,x,p,kinetic,DS);
 % das DOT-Signal nur das PRODUKT KLa*YXO. KLa := 1 ist also keine Annahme,
 % sondern eine Reparametrisierung: gefittet wird YXO_eff = KLa*YXO.
 % pLB == pUB haelt den Wert in fmincon fest.
-KLa_fix = 1.0;
-p0  = [0.3;  0.5;  0.15; 300;  KLa_fix];
-pLB = [0.01; 0.01; 0.01; 1;    KLa_fix];
-pUB = [1.0;  500;  1.0;  1e5;  KLa_fix];
+KLa_fix = 500; % fixiert da nur produkt aus KS und YXO identifizierbar ist. Konstante rpm heißt kla sollte auch mehr oder weniger konstant sein
+p0  = [0.3;  0.5;  0.15; 0.6;  KLa_fix];
+pLB = [0.01; 0.01; 0.01; 0.01;    KLa_fix];
+pUB = [1.0;  500;  1.0;  10;  KLa_fix];
 
 [TrainFit1, x0_tr1] = prep(TrainData, spec1, nCutDOT);
 obj1 = @(p) wls_error(p, x0_tr1, TrainFit1, RHS1, spec1);
@@ -58,7 +58,9 @@ fprintf('WLS-Fehler (Training): %.4f\n', fval);
 fprintf('mu_max   = %.4f 1/h\n', p_opt(1));
 fprintf('K_S      = %.4f g/L\n', p_opt(2));
 fprintf('Y_XS     = %.4f g/g\n', p_opt(3));
-fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt(4), p_opt(5));
+%fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt(4), p_opt(5));
+fprintf('Y_XO     = %.4f g/g  (bei KLa = %.0f 1/h; identifiziert ist KLa*Y_XO = %.1f 1/h)\n', ...
+    p_opt(4), p_opt(5), p_opt(4)*p_opt(5));
 
 [ValFit1, x0_val1] = prep(ValData, spec1, nCutDOT);
 fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
@@ -71,9 +73,9 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 %% MODELL 2
 %% ======================================================================
 % Parameter: [mumax, KS, YXS, Y_Bam, Y_AmX, YXO_eff, KLa]
-p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  300;  KLa_fix];
-pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 1;    KLa_fix];
-pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   1e5;  KLa_fix];
+p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  0.6;  KLa_fix];
+pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;    KLa_fix];
+pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
 
 [TrainFit2, x0_tr2] = prep(TrainData, spec2, nCutDOT);
 obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2, spec2);
@@ -265,6 +267,9 @@ end
 
 function plot_experiment(Data, p, RHS, spec, ylabs, nCutDOT, titel)
 % Simulation auf feinem Zeitraster, Messpunkte mit Fehlerbalken darueber.
+    FS = 14;  % Schriftgroesse fuer Labels und Titel
+    FSA = 14; % Schriftgroesse fuer Achsen-Ticks
+
     [D, x0]  = prep(Data, spec, nCutDOT);
     DOTstern = max(D.O2.y);
 
@@ -281,11 +286,13 @@ function plot_experiment(Data, p, RHS, spec, ylabs, nCutDOT, titel)
         errorbar(mess.t, mess.y, sqrt(mess.var), 'o', ...
                  'MarkerFaceColor','b','MarkerSize',4); hold on;
         plot(t_sim, X(:,spec{k,2}), 'LineWidth', 2);
-        title(spec{k,1}); ylabel(ylabs{k});
-        legend('Messung \pm \sigma','Simulation','Location','best'); grid on;
+        title(spec{k,1}, 'FontSize', FS); ylabel(ylabs{k}, 'FontSize', FS);
+        legend('Messung \pm \sigma','Simulation','Location','best', 'FontSize', FS); 
+        set(gca, 'FontSize', FSA);
+        grid on;
     end
-    xlabel('BatchAge (h)');
-    sgtitle(titel);
+    xlabel('BatchAge (h)', 'FontSize', FS);
+    sgtitle(titel, 'FontSize', FS);
 end
 
 

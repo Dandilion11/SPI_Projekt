@@ -11,11 +11,11 @@ scriptDir   = pwd;
 projectRoot = fileparts(scriptDir);
 
 load(fullfile(scriptDir,'..', 'Daten','Daten_Processed','Processed_Batch_Data.mat'));
-tmp   = load(fullfile(scriptDir,'..', 'Daten','p_opt.mat'));
+tmp   = load(fullfile(scriptDir,'..', 'Matlab_Code', 'Daten','p_opt', 'p_opt.mat'));
 p_opt = tmp.p_opt;
 
-addpath(fullfile(projectRoot,'Modelle'),'-begin');
-addpath(fullfile(projectRoot,'utils'),  '-begin');
+addpath(fullfile(projectRoot,'Matlab_Code/Modelle'),'-begin');
+addpath(fullfile(projectRoot,'Matlab_Code/utils'),  '-begin');
 
 % 2. Konfiguration & Messdaten
 kinetic    = 3;       % 3 = Monod

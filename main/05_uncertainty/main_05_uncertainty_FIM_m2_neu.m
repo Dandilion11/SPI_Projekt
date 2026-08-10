@@ -86,13 +86,13 @@ for c = 1:size(kanal,1)
         vd = vk(2:end) + vk(1:end-1);
         n  = size(dS,1);
         for k = 1:n
-            FM = FM + (dS(k,:).' * dS(k,:)) / vd(k) / n;
+            FM = FM + (dS(k,:).' * dS(k,:)) / vd(k); % / n;
         end
         fprintf('Base: %d Inkremente verwendet\n', n);
     else
         n = size(Sy,1);
         for k = 1:n
-            FM = FM + (Sy(k,:).' * Sy(k,:)) / max(vc(k),eps) / n;
+            FM = FM + (Sy(k,:).' * Sy(k,:)) / max(vc(k),eps); % / n;
         end
     end
 end
@@ -143,10 +143,10 @@ for i = 1:nf
 end
 
 %% 6. Ellipsoid ----------------------------------------------------------
-idx3 = [1 2 3];      % mumax, KS, YXS
+idx2 = [1 2];      % mumax, KS, YXS
 figure('Name','Parameterunsicherheit Modell 2 (FIM)');
-plot_gaussian_ellipsoid(p_f(idx3), CV(idx3,idx3), 1);
-xlabel('\mu_{max}'); ylabel('K_S'); zlabel('Y_{XS}');
+plot_gaussian_ellipsoid(p_f(idx2), CV(idx2,idx2), 1);
+xlabel('\mu_{max}'); ylabel('K_S');
 title(sprintf('1\\sigma-Ellipsoid Modell 2 (Kondition = %.2e)', en(1)/en(end)));
 grid on;
 
