@@ -40,19 +40,22 @@ wsig = [1 1 1 1 1 1];
 
 %% 3. Parameter -----------------------------------------------------------
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
-p0  =  [ 0.30,  0.50,  0.30,  0.05,  0.02,  0.02,  200,  0.6,  0.05,  0.05];
-pLB =  [ 0.01,  1e-3,  0.05,  1e-3,  1e-4,  1e-4,  50,   0.01,  3e-3,  0.01];
-pUB =  [ 1.00,  10.0,  1.00,  1.00,  1.00,  1.0,   800,  10,  1.0,   0.5 ];
+p0 = [0.3269 4.29 0.1429 0.0863 0.0870 0.0250 500 0.4721 1e-4 1e-4];
+pLB =  [ 0.01,  0.01,  0.05,  1e-3,  1e-4,  1e-4,  50,   0.01,  0.0001,  0.0001];
+pUB =  [ 1.00,  20.0,  1.00,  1.00,  1.00,  1.0,   800,  10,  1.0,   0.5 ];
 
 % Fixierte Parameter -- pLB == pUB haelt sie in fmincon fest.
-%   KS   : nur in der Batch-Phase identifizierbar -> Wert aus Modell 1.
 %   KLa  : nur das Produkt KLa*YXO ist bestimmbar (DOT quasistationaer).
 %          KLa := 1 ist eine Reparametrisierung, YXO wird zu YXO_eff.
 %   KAm,
 %   KPh  : nicht identifizierbar, bleiben aber im Modell -- ohne sie
 %          laufen mAm/mPh negativ.
-iFix = [2 7 9 10];
-pFix = [4.29, 500, 0.01, 0.01];
+
+iFix = [7 9 10];
+pFix = [500, 0.0001, 0.0001];
+
+
+
 p0(iFix) = pFix;  pLB(iFix) = pFix;  pUB(iFix) = pFix;
 isFree = true(1,numel(p0));  isFree(iFix) = false;
 
@@ -365,34 +368,33 @@ function plot_row(row, mess, t_sim, y_sim, name, ylab, FS, FSA)
              'MarkerFaceColor','b','MarkerSize',4); hold on;
     plot(t_sim, y_sim, 'LineWidth', 2);
     title(name, 'FontSize', FS); ylabel(ylab, 'FontSize', FS);
-    legend('Messung \pm \sigma','Simulation','Location','best', 'FontSize', FS); 
+    legend('Messung ± σ','Simulation','Location','best', 'FontSize', FS); 
     set(gca, 'FontSize', FSA);
     grid on;
 end
 
 
 function save_fig(fig, name, ordner)
-% Speichert eine Figure hell (fuer Folien) als PNG und PDF.
+% Speichert eine Figure als PNG, PDF und SVG.
     if ~exist(ordner,'dir'), mkdir(ordner); end
     name = regexprep(strtrim(name), '[^\w\-]', '_');
     if isempty(name), name = sprintf('Figure_%d', fig.Number); end
-    ziel = fullfile(ordner, [name '.png']);
+    basis = fullfile(ordner, name);
 
-    try                                   % ab R2025a: helles Theme
-        set(fig, 'Theme', 'light');  drawnow;
-    catch                                 % sonst von Hand umfaerben
-        set(fig, 'Color', 'w', 'InvertHardcopy', 'off');
-        for a = findall(fig,'Type','axes').'
-            set(a, 'Color','w', 'XColor','k', 'YColor','k', ...
-                   'GridColor',[0.15 0.15 0.15], 'GridAlpha',0.15);
-            set([a.Title a.XLabel a.YLabel], 'Color', 'k');
-        end
-        set(findall(fig,'Type','legend'), 'TextColor','k', 'Color','w');
-        set(findall(fig,'Type','text'), 'Color', 'k');
-        drawnow;
+    set(fig, 'Color', 'w', 'InvertHardcopy', 'off');   % weisser Rand im Export
+    drawnow;
+
+    %exportgraphics(fig, [basis '.png'], 'Resolution', 300);
+    %exportgraphics(fig, [basis '.pdf'], 'ContentType', 'vector');
+
+    % SVG kann exportgraphics erst ab R2023b -> sonst ueber print
+    try
+        exportgraphics(fig, [basis '.svg'], 'ContentType', 'vector');
+    catch
+        set(fig, 'PaperPositionMode', 'auto');          % Bildschirmgroesse behalten
+        print(fig, [basis '.svg'], '-dsvg');
     end
 
-    exportgraphics(fig, ziel, 'Resolution', 300);
-    exportgraphics(fig, strrep(ziel,'.png','.pdf'), 'ContentType','vector');
-    fprintf('  gespeichert: %s\n', ziel);
+    fprintf('  gespeichert: %s (.png .pdf .svg)\n', basis);
 end
+

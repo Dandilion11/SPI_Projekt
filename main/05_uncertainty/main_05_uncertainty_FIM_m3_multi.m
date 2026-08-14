@@ -32,7 +32,7 @@ p_opt = S.p_opt(:);
 
 nx = 7;   np = 10;
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
-iFree = [1 3 4 5 6 8];         % KS, KLa, KAm, KPh waren im Fit fixiert
+iFree = [1 2 3 4 5 6 8];  % KLa, KAm, KPh waren im Fit fixiert
 nf    = numel(iFree);
 dt_min = 2.0;                  % h, Ausduennung der Base (wie im Fit)
 
@@ -107,7 +107,7 @@ for i = 1:nf
 end
 
 %% 5. Ellipsoid ----------------------------------------------------------
-idx2 = [2 3];   % mumax, YXS, YAmX (Positionen innerhalb von iFree)
+idx2 = [3 4];  % YXS, YAmX (Positionen innerhalb von iFree)
 figure('Name','Parameterunsicherheit Modell 3 (FIM)');
 plot_gaussian_ellipsoid(p_f(idx2), CV(idx2,idx2), 1);
 xlabel('Y_{XS}'); ylabel('Y_{AmX}');
@@ -183,6 +183,7 @@ function X_ext = sim_xp(t, x0, u, p, DOTstern, Probe, nx, np)
 % echten Unstetigkeiten. An einer Probenahme gilt x+ = g(x), also
 % XP+ = (dg/dx) * XP.
     t  = t(:);
+
     tp = Probe.BatchAge(:);  vp = Probe.Volumen(:);
     tf = u(1,:).';           t0 = u(1,1);
 

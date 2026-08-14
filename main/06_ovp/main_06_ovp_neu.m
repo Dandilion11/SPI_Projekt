@@ -35,7 +35,7 @@ F0 = load(fullfile(DATEN,'FIM','FIM_Modell3_multi.mat'));
 
 p     = S.p_opt(:);
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
-iFree = [1 3 4 5 6 8];
+iFree = [1 2 3 4 5 6 8];
 nf    = numel(iFree);
 nx    = 7;   np = 10;
 
@@ -199,7 +199,7 @@ title(sprintf('A-Kriterium %.2e -> %.2e', trace(CV_alt), J_opt), 'FontSize', FS)
 % iFree = [1 3 4 5 6 8] -> Position 2 = YXS, Position 3 = YAmX.
 % Dieses Paar ist am staerksten korreliert (rho = -0.91), die OVP soll
 % diese Kopplung aufbrechen.
-idx2 = [2 3];
+idx2 = [3 4];
 figure('Name','Unsicherheitsellipse vor/nach OVP');
 h1 = plot_gaussian_ellipsoid(pf(idx2), CVabs_alt(idx2,idx2), 1); hold on;
 h2 = plot_gaussian_ellipsoid(pf(idx2), CVabs_neu(idx2,idx2), 1);
