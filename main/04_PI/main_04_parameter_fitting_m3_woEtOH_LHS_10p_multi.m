@@ -20,7 +20,9 @@ addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 addpath(fullfile(projectRoot,'..','utils'),'-begin');
 rehash;
 
-SIMFUN = @sim_m3_sample_10p;
+%SIMFUN = @sim_m3_sample_10p;
+SIMFUN = @(tt,xx,uu,pp,dd,PP) sim_m3_sample_10p(tt,xx,uu,pp,dd,PP,'fast');
+
 nTrain = numel(TrainSet);
 nVal   = numel(ValSet);
 
