@@ -11,9 +11,10 @@
 
 clear; clc; close all;
 
-projectRoot = pwd;
+projectRoot = fileparts(mfilename('fullpath'));
+projectRoot = fullfile(projectRoot,'..', '..');
 load(fullfile(projectRoot,'Daten','Daten_Processed','Processed_Batch_Data.mat'));
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
+addpath(fullfile(projectRoot,'Modelle'),'-begin');
 rehash; clear Modell1 Modell2
 
 kinetic = 3;      % 3 = Monod
@@ -49,8 +50,10 @@ p0  = [0.3;  0.5;  0.15; 0.6;  KLa_fix];
 pLB = [0.01; 0.01; 0.01; 0.01;    KLa_fix];
 pUB = [1.0;  500;  1.0;  10;  KLa_fix];
 
+wsig_m1 = [1; 1; 1];
+
 [TrainFit1, x0_tr1] = prep(TrainData, spec1, nCutDOT);
-obj1 = @(p) wls_error(p, x0_tr1, TrainFit1, RHS1, spec1);
+obj1 = @(p) wls_error(p, x0_tr1, TrainFit1, RHS1, spec1, wsig_m1);
 [p_opt, fval] = lhs_multistart(obj1, p0, pLB, pUB, options, N_lhs, K_opt);
 
 fprintf('\n--- Modell1: Training RamScDef03 ---\n');
@@ -64,7 +67,7 @@ fprintf('Y_XO     = %.4f g/g  (bei KLa = %.0f 1/h; identifiziert ist KLa*Y_XO = 
 
 [ValFit1, x0_val1] = prep(ValData, spec1, nCutDOT);
 fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
-        wls_error(p_opt, x0_val1, ValFit1, RHS1, spec1));
+        wls_error(p_opt, x0_val1, ValFit1, RHS1, spec1, wsig_m1));
 
 save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 
@@ -72,13 +75,15 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 %% ======================================================================
 %% MODELL 2
 %% ======================================================================
-% Parameter: [mumax, KS, YXS, Y_Bam, Y_AmX, YXO_eff, KLa]
+% Parameter: [mumax, KS, YXS, Y_Bam, Y_AmX, YXO_eff, KLa, KAm]
 p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  0.6;  KLa_fix];
 pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;    KLa_fix];
 pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
 
+wsig_m2 = [1; 1; 1; 0.15; 1];
+
 [TrainFit2, x0_tr2] = prep(TrainData, spec2, nCutDOT);
-obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2, spec2);
+obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2, spec2, wsig_m2);
 [p_opt_m2, fval_m2] = lhs_multistart(obj2, p0_m2, pLB_m2, pUB_m2, options, N_lhs, K_opt);
 
 fprintf('\n--- Modell2: Training RamScDef03 ---\n');
@@ -92,7 +97,7 @@ fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt_m2(6), p_
 
 [ValFit2, x0_val2] = prep(ValData, spec2, nCutDOT);
 fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
-        wls_error(p_opt_m2, x0_val2, ValFit2, RHS2, spec2));
+        wls_error(p_opt_m2, x0_val2, ValFit2, RHS2, spec2, wsig_m2));
 
 save(fullfile(projectRoot,'Daten','p_opt','p_opt_Modell2.mat'), 'p_opt_m2');
 
@@ -103,13 +108,13 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt_Modell2.mat'), 'p_opt_m2');
 % Zeigt, welcher Kanal das Guetefunktional treibt. J/nch ist der mittlere
 % quadrierte Residuenwert pro Kanal -- bei korrektem Modell und korrekter
 % Varianz waere er ~1.
-[J,c,n] = wls_error(p_opt,    x0_tr1,  TrainFit1, RHS1, spec1);
+[J,c,n] = wls_error(p_opt,    x0_tr1,  TrainFit1, RHS1, spec1, wsig_m1);
 fprintf('\n-- Modell1 Training --\n');   print_channels(spec1(:,1), c, J, n);
-[J,c,n] = wls_error(p_opt,    x0_val1, ValFit1,   RHS1, spec1);
+[J,c,n] = wls_error(p_opt,    x0_val1, ValFit1,   RHS1, spec1, wsig_m1);
 fprintf('-- Modell1 Validierung --\n');  print_channels(spec1(:,1), c, J, n);
-[J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2, spec2);
+[J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2, spec2, wsig_m2);
 fprintf('\n-- Modell2 Training --\n');   print_channels(spec2(:,1), c, J, n);
-[J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2, spec2);
+[J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2, spec2, wsig_m2);
 fprintf('-- Modell2 Validierung --\n');  print_channels(spec2(:,1), c, J, n);
 
 
@@ -186,7 +191,7 @@ function [p_opt, fval] = lhs_multistart(obj_fun, p0, pLB, pUB, options, N_lhs, K
 end
 
 
-function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec)
+function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec, wsig)
 % Guetefunktional fuer ein Experiment.
 %   Residuum:   r = (y - y_sim)/sigma
 %   Gewichtung: Mittelwert pro Kanal. Ohne das wuerde DOT mit hunderten
@@ -239,7 +244,7 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec)
             r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
         end
 
-        contrib(i) = mean(r.^2);
+        contrib(i) = wsig(i) * mean(r.^2);
         J          = J + contrib(i);
     end
     if ~isfinite(J), J = 1e8; end
