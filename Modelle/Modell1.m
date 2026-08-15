@@ -15,7 +15,7 @@ end
 
 cO2stern = DOTstern;  % Enfors Gl. 6.6 -> cO2stern(C*): dissolved oxygen concentration in equilibrium with the gas phase -> Maximal lösliche O2-Konzentration unter den gegebenen Bedingungen
 cO2_sat = 7.14e-3;   % Laut Enfors für das Modell angenommen (g/L)
-H       = 100/cO2_sat; 
+H       = 100/cO2_sat; % entspricht 14005 % * g * L^-1
 %% Parameter
 mumax = p(1); % max spezifische Wachstumsrate (maximum specific growth rate (Doran, P. M. (2013). Bioprocess Engineering Principles. S. 279))
 KS    = p(2); % Halbsättigungskonstante(substrate constant (Doran, P. M. (2013). Bioprocess Engineering Principles. S. 279))

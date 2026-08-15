@@ -2,7 +2,7 @@ clear; clc; close all;
 
 % Datei laden (Beispiel)
 scriptDir = fileparts(mfilename('fullpath'));
-pfad = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef05.mat');
+pfad = fullfile(scriptDir, '..', 'Daten', 'MessDaten_SPI1_Projekt', 'Mess_RamScDef03.mat');
 daten = load(pfad);
 u_matrix = daten.Mess.u;
 

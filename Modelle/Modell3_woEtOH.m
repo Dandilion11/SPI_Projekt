@@ -4,7 +4,7 @@ function dxdt = Modell3_woEtOH(t, x, u, p, DOTstern)
 %Ethanol ist in den Messwerten immer 0 und wurde nicht über die ganze
 %Messdauer aufgezeichnet deshalb die Version ohne EtOH
 
-x = max(x, 0);
+%x = max(x, 0);
 
 % Nach Input struct     % Zustände entsprechend des
 % aus Preprocessing     % Mess.Messdaten-Structs                 
@@ -37,7 +37,7 @@ cPh = mPh / V;
 %% Reaktionsraten (Krämer 2017, Gl. 16–18)
 
 % rX: Biomassewachstum auf Glucose (Gl. 16)                   % Monod (Standard)
- rX = mumax * cGlc / (KS + cGlc);
+ rX = mumax * (cGlc/(KS + cGlc));  % [1/h]
 
 %% Stellgrößen aus u-Matrix (Krämer 2016/2017 und laut Terrance Beschreibung der Eingänge)
 tu  = u(1,:);

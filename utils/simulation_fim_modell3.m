@@ -1,12 +1,9 @@
 %% FIM von Modell 3
 function [FM, x_out, y_out] = simulation_fim_modell3(t, x0, u, p, invC, DOTstern)
-% Simulation mit Sensitivitaeten und Berechnung der Fisher-Informationsmatrix
-% invC : 6x6 (inverse Messkovarianz, 6 Messgroessen)
-nx = 7; np = 8; ny = 6;
 
-if nargin < 6 || isempty(DOTstern), DOTstern = 100; end
+nx = 7; np = 8; ny = 6; % 7 eingangsgrößen, 8 Parameter, 6 Messgleichungen
 
-% Anfangsbedingungen (Zustaende + Nullsensitivitaeten)
+% Anfangsbedingungen
 XP0    = zeros(nx, np);          % 7 x 8
 x0_ext = [x0(:); XP0(:)];        % 7 + 56 = 63 Elemente
 

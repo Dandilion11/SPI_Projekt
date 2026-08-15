@@ -9,7 +9,7 @@ x = max(x,0);
 %% Zustaende
 cX    = x(1);  % Biomasse             [g/L] (CDW)
 cGlc  = x(2);  % Glucose              [g/L]
-cAm   = x(3);  % Ammonium             [g/L]         -> Kann raus? Wird nicht genutzt
+cAm   = x(3);  % Ammonium             [g/L]         
 cBase = x(4);  % zugegebene Base      [mol/L bzw. L-Aequivalent]
 cO2   = x(5);  % gelöster Sauerstoff [g/L]   
 
@@ -41,7 +41,7 @@ end
 dxdt = zeros(5, 1);
 dxdt(1) =  mu * cX;                                 % Biomasse
 dxdt(2) = -(1 / YXS) * mu * cX;                     % Glucose
-dxdt(3) = -YAmX * mu * cX;                          % Ammonium      -> Könnte auch raus, sonst in Kinetik rein
+dxdt(3) = -YAmX * mu * cX;                          % Ammonium   
 dxdt(4) =  YBam * YAmX * mu * cX;                   % Base      ->Messung
 dxdt(5) =  KLa * (DOTstern - cO2) - H * 1/YXO * mu * cX; % O2   ->Messung Basen Massen Bilanz
 
