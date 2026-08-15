@@ -119,8 +119,21 @@ save(fullfile(DATEN,'FIM','FIM_Modell3_multi.mat'), ...
      'FM','FM_f','CV','sd','relStd','Corr','iFree','p_opt','chi2_N');
 fprintf('\nGespeichert: FIM_Modell3_multi.mat\n');
 
-build_heatmap(Corr, namen(iFree))
+hFig = build_heatmap(Corr, namen(iFree));
 
+% Heatmap speichern
+bildordner = fullfile(projectRoot,'Bilder','FIM');
+if ~exist(bildordner,'dir'), mkdir(bildordner); end
+set(hFig, 'Color', 'w', 'InvertHardcopy', 'off');
+drawnow;
+try
+    exportgraphics(hFig, fullfile(bildordner,'Korrelationsmatrix_M3.svg'), ...
+        'ContentType', 'vector');
+catch
+    set(hFig, 'PaperPositionMode', 'auto');
+    print(hFig, fullfile(bildordner,'Korrelationsmatrix_M3.svg'), '-dsvg');
+end
+fprintf('  gespeichert: Korrelationsmatrix_M3.svg\n');
 
 %% ======================================================================
 %  Hilfsfunktionen
@@ -217,7 +230,7 @@ function xe = probe_ext(xe, Vp, nx, np)
 end
 
 
-function build_heatmap(corr, params)
+function h = build_heatmap(corr, params)
 n = 256;
 
 blue = [0.0000 0.4470 0.7410];
@@ -246,4 +259,5 @@ h.ColorLimits = [-1 1];
 h.Colormap = cmap;
 h.CellLabelFormat = '%.2f';
 h.FontSize = 11;
+h = gcf;
 end
