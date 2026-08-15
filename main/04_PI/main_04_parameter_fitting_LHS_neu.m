@@ -78,7 +78,7 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 %% MODELL 2
 %% ======================================================================
 %Definieren welches Modell, ob mit oder ohne Ammonium
-woAm = false;
+woAm = true;
 
 if woAm
     % Parameter woAm: [mumax, KS, YXS, Y_Bam, YXO_eff, KLa]
@@ -166,8 +166,8 @@ plot_experiment(TrainData, p_opt,    RHS1, spec1, ylab1, nCutDOT, 'Modell1 | Tra
 plot_experiment(ValData,   p_opt,    RHS1, spec1, ylab1, nCutDOT, 'Modell1 | Validierung RamScDef04');
 
 if woAm
-    plot_experiment(TrainData, p_opt_m2, RHS2_woAm, spec2_woAm, ylab2, nCutDOT, 'Modell2 | Training RamScDef03');
-    plot_experiment(ValData,   p_opt_m2, RHS2_woAm, spec2_woAm, ylab2, nCutDOT, 'Modell2 | Validierung RamScDef04');
+    plot_experiment(TrainData, p_opt_m2, RHS2_woAm, spec2_woAm, ylab2_woAm, nCutDOT, 'Modell2 ohne Ammonium | Training RamScDef03');
+    plot_experiment(ValData,   p_opt_m2, RHS2_woAm, spec2_woAm, ylab2_woAm, nCutDOT, 'Modell2 ohne Ammonium | Validierung RamScDef04');
 else
     plot_experiment(TrainData, p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Training RamScDef03');
     plot_experiment(ValData,   p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Validierung RamScDef04');

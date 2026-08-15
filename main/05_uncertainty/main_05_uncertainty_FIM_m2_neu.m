@@ -10,10 +10,11 @@
 
 clear; clc; close all;
 
-projectRoot = pwd;
+projectRoot = fileparts(mfilename('fullpath'));
+projectRoot = fullfile(projectRoot,'..', '..');
 DATEN = fullfile(projectRoot,'Daten');        % zentrale Pfadwurzel
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
-addpath(fullfile(projectRoot,'..','utils'),  '-begin');
+addpath(fullfile(projectRoot,'Modelle'),'-begin');
+addpath(fullfile(projectRoot,'utils'),  '-begin');
 rehash;
 
 load(fullfile(DATEN,'Daten_Processed','Processed_Batch_Data.mat'));
@@ -154,7 +155,7 @@ if ~exist(fullfile(DATEN,'FIM'),'dir'), mkdir(fullfile(DATEN,'FIM')); end
 save(fullfile(DATEN,'FIM','FIM_Modell2.mat'), ...
      'FM','FM_f','CV','sd','relStd','Corr','iFree','p_opt_m2');
 fprintf('\nGespeichert: FIM_Modell2.mat\n');
-
+build_heatmap(Corr, namen(iFree))
 
 %% ======================================================================
 function keep = subsample_idx(t, dt_min)
@@ -163,4 +164,34 @@ function keep = subsample_idx(t, dt_min)
     for i = 1:numel(t)
         if t(i) - last >= dt_min, keep(i) = true;  last = t(i); end
     end
+end
+function build_heatmap(corr, params)
+n = 256;
+
+blue = [0.0000 0.4470 0.7410];
+white = [1.0000 1.0000 1.0000];
+red  = [0.8500 0.3250 0.0980];
+
+cmap1 = [linspace(blue(1),white(1),n/2)', ...
+    linspace(blue(2),white(2),n/2)', ...
+    linspace(blue(3),white(3),n/2)'];
+
+cmap2 = [linspace(white(1),red(1),n/2)', ...
+    linspace(white(2),red(2),n/2)', ...
+    linspace(white(3),red(3),n/2)'];
+
+cmap = [cmap1; cmap2];
+
+figure('Color','w');
+
+h = heatmap(params, params, corr);
+
+h.Title = 'Korrelationsmatrix';
+h.XLabel = 'Parameter';
+h.YLabel = 'Parameter';
+
+h.ColorLimits = [-1 1];
+h.Colormap = cmap;
+h.CellLabelFormat = '%.2f';
+h.FontSize = 11;
 end
