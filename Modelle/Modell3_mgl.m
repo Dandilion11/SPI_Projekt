@@ -8,7 +8,7 @@ y = [x(2)/V;   % cX   [g/L]
      x(3)/V;   % cGlc [g/L]
      x(4)/V;   % cNH4 [g/L]
      x(5)/V;   % cPO4 [g/L]
-     x(6);    % mB   [mL]
+     x(6);    % mB   [L]
      x(7);];   % DOT [%]
 
 end
