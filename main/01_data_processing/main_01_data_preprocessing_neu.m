@@ -18,8 +18,9 @@ tCut_03 = 6;    % Batch-Fenster Training   [h]
 tCut_04 = 8;    % Batch-Fenster Validierung [h]
 
 %% Laden ------------------------------------------------------------------
-scriptDir = pwd;
-datenordner = fullfile(scriptDir,'Daten','MessDaten_SPI1_Projekt');
+scriptDir = fileparts(mfilename('fullpath'));
+
+datenordner = fullfile(scriptDir, '..', '..', 'Daten', 'MessDaten_SPI1_Projekt');
 exp_03 = load(fullfile(datenordner,'Mess_RamScDef03.mat')).Mess;
 exp_04 = load(fullfile(datenordner,'Mess_RamScDef04.mat')).Mess;
 
