@@ -4,10 +4,9 @@
 % EIN gemeinsamer Parametersatz fuer alle vier Trainingsexperimente,
 % Validierung auf einem zurueckgehaltenen Lauf.
 %
-% Kernentscheidungen (Begruendung jeweils am Block):
 %   - Mittelung pro Messkanal statt Aufsummieren
-%   - Base wird als Inkrement bewertet, nicht als Absolutwert
-%   - KS, KLa, KAm, KPh sind fixiert -> 6 freie Parameter
+%   - Base wird als Absolutwert bewertet (Kraemer & King 2017, Gl. 22)
+%   - KLa, KAm, KPh sind fixiert -> 7 freie Parameter
 %   - Optimierung in log-Skala, Multistart per LHS
 
 clear; clc; close all;
@@ -20,13 +19,11 @@ addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
 addpath(fullfile(projectRoot,'..','utils'),'-begin');
 rehash;
 
-%SIMFUN = @sim_m3_sample_10p;
 SIMFUN = @(tt,xx,uu,pp,dd,PP) sim_m3_sample_10p(tt,xx,uu,pp,dd,PP,'fast');
 
 nTrain = numel(TrainSet);
 nVal   = numel(ValSet);
 
-% DOTstern (Saettigungswert) je Experiment aus den Daten
 DOTstern_train = arrayfun(@(D) max(D.O2.y), TrainSet);
 DOTstern_val   = arrayfun(@(D) max(D.O2.y), ValSet);
 
@@ -34,25 +31,21 @@ fprintf('Training   : %s\n', strjoin({TrainSet.name}, ', '));
 fprintf('Validierung: %s\n', strjoin({ValSet.name}, ', '));
 
 %% 2. Kanalgewichte -------------------------------------------------------
-% Reihenfolge: [Biomasse Glucose Ammonium Phosphat Base DOT]
-% Eine 0 schaltet einen Kanal komplett ab (wurde fuer den DOT-Test genutzt).
-wsig = [1 1 1 1 1 0.0001];
+% [Biomasse Glucose Ammonium Phosphat Base DOT], 0 schaltet einen Kanal ab.
+wsig = [1 1 1 1 1e-1 1e-4];
 
 %% 3. Parameter -----------------------------------------------------------
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
-p0  =  [ 0.30,  0.50,  0.30,  0.05,  0.02,  0.02,  200,  0.6,  0.05,  0.05];
-pLB =  [ 0.01,  1e-3,  0.05,  1e-3,  1e-4,  1e-4,  50,   0.01,  3e-3,  0.01];
-pUB =  [ 1.00,  10.0,  1.00,  1.00,  1.00,  1.0,   800,  10,  1.0,   0.5 ];
+p0  = [0.328 4.32 0.1412 0.087 0.087 0.0245 500 0.47 0.0001 0.0001];
+pLB = [ 0.01,  1e-3,  0.05,  1e-3,  1e-4,  1e-4,  50,   0.01,  0.0001,  0.0001];
+pUB = [ 1.00,  10.0,  1.00,  1.00,  1.00,  1.0,   800,  10,    1.0,     0.5   ];
 
 % Fixierte Parameter -- pLB == pUB haelt sie in fmincon fest.
-%   KS   : nur in der Batch-Phase identifizierbar -> Wert aus Modell 1.
-%   KLa  : nur das Produkt KLa*YXO ist bestimmbar (DOT quasistationaer).
-%          KLa := 1 ist eine Reparametrisierung, YXO wird zu YXO_eff.
-%   KAm,
-%   KPh  : nicht identifizierbar, bleiben aber im Modell -- ohne sie
-%          laufen mAm/mPh negativ.
-iFix = [2 7 9 10];
-pFix = [4.29, 500, 0.01, 0.01];
+%   KLa      : nur das Produkt KLa*YXO ist bestimmbar (DOT quasistationaer).
+%   KAm, KPh : nicht identifizierbar, bleiben aber im Modell -- ohne sie
+%              laufen mAm/mPh negativ. Werte nach Herold et al. 2017.
+iFix = [7 9 10];
+pFix = [500, 0.0001, 0.0001];
 p0(iFix) = pFix;  pLB(iFix) = pFix;  pUB(iFix) = pFix;
 isFree = true(1,numel(p0));  isFree(iFix) = false;
 
@@ -60,7 +53,7 @@ fprintf('Frei: %s\n', strjoin(namen(isFree), ', '));
 fprintf('Fix : %s\n', strjoin(compose('%s=%.4g', string(namen(iFix))', pFix'), ', '));
 
 % Bisher bestes Ergebnis: Startpunkt UND Akzeptanzschwelle.
-pRef = [0.3430 4.29 0.1435 0.0852 0.0837 0.0241 500 0.492 0.01 0.01];
+pRef = [0.328 4.32 0.1412 0.087 0.087 0.0245 500 0.47 0.0001 0.0001];
 
 options = optimoptions('fmincon', 'Display','iter', 'Algorithm','sqp', ...
                        'MaxFunctionEvaluations', 8000, ...
@@ -77,13 +70,10 @@ obj_fun = @(p) wls_error_multi(p, TrainSet, DOTstern_train, SIMFUN, wsig);
 obj_log = @(q) obj_fun(10.^q);
 qLB = log10(pLB);   qUB = log10(pUB);
 
-%% 4. Referenzpunkt auswerten --------------------------------------------
 J_ref = obj_fun(pRef);
 fprintf('\nReferenzpunkt pRef: J = %.4f  (Endergebnis muss <= sein)\n', J_ref);
 
-%% 5. Startpunkte per Latin Hypercube Sampling ---------------------------
-% Billiges Screening ueber viele Zufallspunkte, davon geht nur der beste
-% in den teuren fmincon-Lauf.
+%% 4. Startpunkte per Latin Hypercube Sampling ---------------------------
 N_lhs = 30;
 K_opt = 1;
 
@@ -100,12 +90,12 @@ end
 [~, order] = sort(Jscreen);
 nGood = min(K_opt, sum(isfinite(Jscreen)));
 
-Pstart = [pRef; p0; P(order(1:nGood), :)];
+Pstart = unique([pRef; p0; P(order(1:nGood), :)], 'rows', 'stable');
 Qstart = log10(Pstart);
 
-fprintf('Bester LHS-Punkt: J = %.4f | p0: J = %.4f\n', min(Jscreen), obj_fun(p0));
+fprintf('Bester LHS-Punkt: J = %.4f\n', min(Jscreen));
 
-%% 6. Optimierung ---------------------------------------------------------
+%% 5. Optimierung ---------------------------------------------------------
 p_opt = pRef;  fval = J_ref;
 for k = 1:size(Qstart,1)
     fprintf('\n--- fmincon Start %d/%d ---\n', k, size(Qstart,1));
@@ -119,15 +109,15 @@ for k = 1:size(Qstart,1)
     end
 end
 
-%% 7. Ergebnis ------------------------------------------------------------
+%% 6. Ergebnis ------------------------------------------------------------
 fprintf('\n=====================================================\n');
 fprintf('  Modell3 woEtOH -- Multi-Experiment-Fit\n');
 fprintf('  %d freie Parameter | wsig = %s\n', nnz(isFree), mat2str(wsig));
 fprintf('=====================================================\n');
 fprintf('WLS gesamt (Training): %.4f   (Referenz war %.4f)\n\n', fval, J_ref);
 
-% Warnung, wenn ein FREIER Parameter an einer Grenze klebt -- dann ist das
-% Ergebnis von der Grenze bestimmt und die FIM dort nicht aussagekraeftig.
+% Klebt ein freier Parameter an einer Grenze, ist das Ergebnis von der
+% Grenze bestimmt und die FIM dort nicht aussagekraeftig.
 onBound = isFree & (p_opt <= pLB*1.001 | p_opt >= pUB*0.999);
 for i = 1:numel(p_opt)
     if ~isFree(i)
@@ -140,8 +130,6 @@ for i = 1:numel(p_opt)
 end
 fprintf('  -> Y_XO ist Y_XO_eff = KLa*YXO (KLa fixiert auf %.1f)\n', p_opt(7));
 
-% Beitrag je Experiment und Kanal. chi2/N_eff waere ~1 bei korrektem
-% Modell und korrekter Varianz.
 fprintf('\n--- Beitrag pro Experiment ---\n');
 Jtr = zeros(nTrain,1);
 for k = 1:nTrain
@@ -154,10 +142,9 @@ end
 fprintf('\nchi2/N_eff gesamt (Training) = %.1f   (Erwartung ~1)\n', ...
         fval / (nnz(wsig)*nTrain));
 
-%% 8. Lokale Sensitivitaet ------------------------------------------------
+%% 7. Lokale Sensitivitaet ------------------------------------------------
 % Wie stark reagiert J auf +-20 % je Parameter? Kleine Werte heissen:
-% strukturell identifizierbar, mit DIESEN Daten aber nicht bestimmbar.
-% Genau das motiviert die Versuchsplanung.
+% mit DIESEN Daten nicht bestimmbar -- das motiviert die Versuchsplanung.
 fprintf('\n--- Lokale Sensitivitaet ---\n');
 fprintf('%-8s %12s %12s %12s\n', 'Param', 'J(-20%)', 'J(+20%)', 'max dJ [%]');
 for j = 1:numel(p_opt)
@@ -173,30 +160,7 @@ for j = 1:numel(p_opt)
     fprintf('%-8s %12.2f %12.2f %12.2f%s\n', namen{j}, Jm, Jp, rel, marker);
 end
 
-%% 8b. Fitguete gegen Glucose-Regime -------------------------------------
-% Zeigt: das Modell passt dort gut, wo Glucose vorhanden ist. Bei
-% Glucose-Mangel fehlt die Ethanol-Kinetik und der Fehler waechst.
-Alle = [TrainSet, ValSet];
-DS   = arrayfun(@(D) max(D.O2.y), Alle);
-fprintf('\n--- p_opt auf allen Experimenten ---\n');
-fprintf('%-12s %8s %8s %12s\n','Exp','J','chi2/N','cGlc>0.5 [%]');
-for k = 1:numel(Alle)
-    [Jk,~,nk] = wls_error_m3(p_opt, Alle(k), DS(k), SIMFUN, wsig);
-    fprintf('%-12s %8.1f %8.1f %12.1f\n', Alle(k).name, Jk, Jk/max(nk,1), ...
-            100*mean(Alle(k).Glucose.y > 0.5));
-end
-
-%% 8c. Nachweis: nur das Produkt KLa*YXO ist bestimmbar -------------------
-% KLa wird ueber vier Dekaden variiert, YXO gegenlaeufig angepasst.
-% Bleibt J konstant, sind die Einzelfaktoren nicht identifizierbar.
-c = p_opt(7)*p_opt(8);
-fprintf('\n--- KLa*YXO = %.1f konstant gehalten ---\n', c);
-for f = [0.01 0.1 1 10 100]
-    q = p_opt;  q(7) = p_opt(7)*f;  q(8) = c/q(7);
-    fprintf('KLa=%9.3f  YXO=%9.4f  J=%.4f\n', q(7), q(8), obj_fun(q));
-end
-
-%% 9. Validierung ---------------------------------------------------------
+%% 8. Validierung ---------------------------------------------------------
 fprintf('\n--- Validierung ---\n');
 Jval = zeros(nVal,1);
 for k = 1:nVal
@@ -209,7 +173,7 @@ end
 fprintf('\nVerhaeltnis Val/Train = %.2f\n', ...
         (sum(Jval)/nVal) / (sum(Jtr)/nTrain));
 
-%% 10. Speichern ----------------------------------------------------------
+%% 9. Speichern -----------------------------------------------------------
 saveDir = fullfile(projectRoot,'Daten','p_opt');
 if ~exist(saveDir,'dir'); mkdir(saveDir); end
 trainNames = {TrainSet.name};  valNames = {ValSet.name};
@@ -218,7 +182,7 @@ save(fullfile(saveDir,'p_opt_Modell3_woEtOH_10p_multi.mat'), ...
      'isFree','J_ref','trainNames','valNames','DOTstern_train','DOTstern_val');
 fprintf('\nGespeichert: %s\n', saveDir);
 
-%% 11. Plots und Abbildungen speichern -----------------------------------
+%% 10. Plots --------------------------------------------------------------
 for k = 1:nTrain
     plot_experiment(TrainSet(k), p_opt, DOTstern_train(k), SIMFUN, ...
                     sprintf('Training: %s', TrainSet(k).name));
@@ -254,26 +218,17 @@ function [J, contrib, nch] = wls_error_m3(p, D, DOTstern, SIMFUN, wsig)
 % Guetefunktional fuer EIN Experiment.
 %   Zustaende:  x = [V; mX; mGlc; mAm; mPh; mB; DOT]
 %   Residuum:   r = (y - y_sim)/sigma
-%   Gewichtung: Mittelwert pro Kanal. Ohne das wuerden DOT und Base mit
-%               ihren hunderten Punkten das Funktional dominieren, waehrend
-%               Biomasse nur ~20 Punkte hat. Dadurch ist N_eff = Anzahl
+%   Gewichtung: Mittelwert pro Kanal, sonst dominieren Base und DOT mit
+%               ihren hunderten Punkten. Dadurch ist N_eff = Anzahl
 %               aktiver Kanaele.
-%
-%   Base ist ein KUMULATIVES Integral: benachbarte Punkte teilen ihre
-%   Integrationsgeschichte, ihre Fehler sind also nicht unabhaengig, und
-%   sigma beschreibt nur das Rauschen einer einzelnen Zugabe. Bewertet
-%   werden deshalb die Inkremente y_k - y_{k-1} -- genau die Groesse, die
-%   YB_Am parametrisiert.
 
     % {Messreihe, Zustandsindex, durch V teilen?}
     M = { D.Biomasse, 2, true;   D.Glucose,  3, true; ...
           D.Ammonium, 4, true;   D.Phosphat, 5, true; ...
           D.Base,     6, false;  D.O2,       7, false };
-    nm = {'Biomasse','Glucose','Ammonium','Phosphat','Base','DOT'};
 
     contrib = zeros(1,6);  nch = 0;
 
-    % Simulationszeitpunkte: alle Messzeiten plus die Feed-Sprungzeiten
     t_all = [];
     for i = 1:6
         if wsig(i) > 0, t_all = [t_all; M{i,1}.t(:)]; end %#ok<AGROW>
@@ -301,29 +256,11 @@ function [J, contrib, nch] = wls_error_m3(p, D, DOTstern, SIMFUN, wsig)
         y_sim = X(iT, M{i,2});
         if M{i,3}, y_sim = y_sim ./ V(iT); end
 
-        if strcmp(nm{i},'Base')
-            % Vor dem Differenzieren ausduennen: bei 0.2 h Abstand waere das
-            % Inkrement kleiner als sein eigenes Rauschen.
-            keep = subsample_idx(mess.t, 2.0);
-            if nnz(keep) < 2, continue; end
-            yB = mess.y(keep);  vB = max(mess.var(keep), eps);
-            r  = (diff(yB) - diff(y_sim(keep))) ./ sqrt(vB(2:end) + vB(1:end-1));
-        else
-            r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
-        end
+        r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
 
         contrib(i) = wsig(i) * mean(r.^2);
         J          = J + contrib(i);
         nch        = nch + 1;
-    end
-end
-
-
-function keep = subsample_idx(t, dt_min)
-% Waehlt Punkte mit mindestens dt_min Abstand (erster Punkt immer dabei).
-    keep = false(numel(t),1);  last = -inf;
-    for i = 1:numel(t)
-        if t(i) - last >= dt_min, keep(i) = true;  last = t(i); end
     end
 end
 
@@ -340,8 +277,7 @@ end
 
 function plot_experiment(D, p_opt, DOTstern, SIMFUN, titel)
 % Simulation ueber den vollen Horizont, alle sechs Kanaele uebereinander.
-    FS = 14;  % Schriftgroesse fuer Labels und Titel
-    FSA = 14; % Schriftgroesse fuer Achsen-Ticks
+    FS = 14;  FSA = 14;
 
     t_sim = linspace(D.u(1,1), max([D.Biomasse.t; D.O2.t; D.Base.t])+1, 400);
     X = SIMFUN(t_sim, D.x0, D.u, p_opt, DOTstern, D.Probe);
@@ -365,34 +301,27 @@ function plot_row(row, mess, t_sim, y_sim, name, ylab, FS, FSA)
              'MarkerFaceColor','b','MarkerSize',4); hold on;
     plot(t_sim, y_sim, 'LineWidth', 2);
     title(name, 'FontSize', FS); ylabel(ylab, 'FontSize', FS);
-    legend('Messung \pm \sigma','Simulation','Location','best', 'FontSize', FS); 
+    legend('Messung ± σ','Simulation','Location','best', 'FontSize', FS);
     set(gca, 'FontSize', FSA);
     grid on;
 end
 
 
 function save_fig(fig, name, ordner)
-% Speichert eine Figure hell (fuer Folien) als PNG und PDF.
     if ~exist(ordner,'dir'), mkdir(ordner); end
     name = regexprep(strtrim(name), '[^\w\-]', '_');
     if isempty(name), name = sprintf('Figure_%d', fig.Number); end
-    ziel = fullfile(ordner, [name '.png']);
+    basis = fullfile(ordner, name);
 
-    try                                   % ab R2025a: helles Theme
-        set(fig, 'Theme', 'light');  drawnow;
-    catch                                 % sonst von Hand umfaerben
-        set(fig, 'Color', 'w', 'InvertHardcopy', 'off');
-        for a = findall(fig,'Type','axes').'
-            set(a, 'Color','w', 'XColor','k', 'YColor','k', ...
-                   'GridColor',[0.15 0.15 0.15], 'GridAlpha',0.15);
-            set([a.Title a.XLabel a.YLabel], 'Color', 'k');
-        end
-        set(findall(fig,'Type','legend'), 'TextColor','k', 'Color','w');
-        set(findall(fig,'Type','text'), 'Color', 'k');
-        drawnow;
+    set(fig, 'Color', 'w', 'InvertHardcopy', 'off');
+    drawnow;
+
+    try
+        exportgraphics(fig, [basis '.svg'], 'ContentType', 'vector');
+    catch
+        set(fig, 'PaperPositionMode', 'auto');
+        print(fig, [basis '.svg'], '-dsvg');
     end
 
-    exportgraphics(fig, ziel, 'Resolution', 300);
-    exportgraphics(fig, strrep(ziel,'.png','.pdf'), 'ContentType','vector');
-    fprintf('  gespeichert: %s\n', ziel);
+    fprintf('  gespeichert: %s.svg\n', basis);
 end

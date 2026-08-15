@@ -35,7 +35,7 @@ nx = 7;   np = 10;
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
 iFree = [1 2 3 4 5 6 8];  % KLa, KAm, KPh waren im Fit fixiert
 nf    = numel(iFree);
-dt_min = 2.0;                  % h, Ausduennung der Base (wie im Fit)
+dt_min = 1.0;                  % h, Ausduennung der Base (wie im Fit)
 
 fprintf('Frei:    %s\n', strjoin(namen(iFree), ', '));
 fprintf('Fixiert: %s\n', strjoin(namen(setdiff(1:np,iFree)), ', '));

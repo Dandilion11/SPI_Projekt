@@ -254,9 +254,6 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec, wsig)
     contrib  = nan(1,nK);
     nch      = nK;
     DOTstern = max(D.O2.y);
-    dt_min   = 1.0;    % h, Ausduennung der Base vor dem Differenzieren
-    useBaseIncrements = true;   % false -> Base wird absolut bewertet
-    %          (nur fuer den Vergleich)
 
     % Ein ODE-Lauf fuer alle Kanaele, ausgewertet an allen Messzeiten
     t_all = [];
@@ -277,17 +274,7 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec, wsig)
         mess = D.(name);
         [~, iT] = ismember(mess.t(:), t_all);
         y_sim = X(iT, spec{i,2});
-
-        if useBaseIncrements && strcmp(name,'Base')
-            % Bei ~0.2 h Abstand waere das Inkrement kleiner als sein
-            % eigenes Rauschen -> vorher ausduennen.
-            keep = subsample_idx(mess.t, dt_min);
-            if nnz(keep) < 3, contrib(i) = 0; continue; end
-            yB = mess.y(keep);  vB = max(mess.var(keep), eps);
-            r  = (diff(yB) - diff(y_sim(keep))) ./ sqrt(vB(2:end) + vB(1:end-1));
-        else
-            r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
-        end
+        r = (mess.y(:) - y_sim) ./ sqrt(max(mess.var(:), eps));
 
         contrib(i) = wsig(i) * mean(r.^2);
         J          = J + contrib(i);
@@ -295,14 +282,6 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec, wsig)
     if ~isfinite(J), J = 1e8; end
 end
 
-
-function keep = subsample_idx(t, dt_min)
-% Waehlt Punkte mit mindestens dt_min Abstand (erster Punkt immer dabei).
-    keep = false(numel(t),1);  last = -inf;
-    for i = 1:numel(t)
-        if t(i) - last >= dt_min, keep(i) = true;  last = t(i); end
-    end
-end
 
 
 function print_channels(namen, contrib, J, nch)
