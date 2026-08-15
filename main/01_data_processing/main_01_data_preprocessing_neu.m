@@ -40,7 +40,7 @@ TrainData.V = exp_03.Messdaten.Weight.Wert(1);
 ValData.V   = exp_04.Messdaten.Weight.Wert(1);
 
 %% Speichern --------------------------------------------------------------
-saveDir = fullfile(scriptDir,'Daten','Daten_Processed');
+saveDir = fullfile(scriptDir, '..', '..', 'Daten','Daten_Processed');
 if ~exist(saveDir,'dir'); mkdir(saveDir); end
 savePath = fullfile(saveDir,'Processed_Batch_Data.mat');
 save(savePath, 'TrainData', 'ValData');
@@ -94,14 +94,14 @@ function s = messwert(feld, name, useMeasuredVar, tMax)
     if useMeasuredVar
         switch name
             case "Base", s.var = v / 1e6;      % mL -> L
-            case "O2",   s.var = v * 1e4;      % Anteil -> %
+            %case "O2",   s.var = v * 1e4;      % Anteil -> %
             otherwise,   s.var = v;
         end
     else
         a = feld.VarParam.a;  b = feld.VarParam.b;
         switch name
             case "Base", s.var = a.*y/1000 + b/1e6;
-            case "O2",   s.var = 100*a.*y + 1e4*b;
+            %case "O2",   s.var = 100*a.*y + 1e4*b;
             otherwise,   s.var = a.*y + b;
         end
     end

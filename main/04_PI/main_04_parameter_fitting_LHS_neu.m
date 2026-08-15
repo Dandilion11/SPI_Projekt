@@ -52,7 +52,7 @@ p0  = [0.3;  0.5;  0.15; 0.6;  KLa_fix];
 pLB = [0.01; 0.01; 0.01; 0.01;    KLa_fix];
 pUB = [1.0;  500;  1.0;  10;  KLa_fix];
 
-wsig_m1 = [1; 1; 1];
+wsig_m1 = [1; 1; 0.0001];
 
 [TrainFit1, x0_tr1] = prep(TrainData, spec1, nCutDOT);
 obj1 = @(p) wls_error(p, x0_tr1, TrainFit1, RHS1, spec1, wsig_m1);
@@ -86,7 +86,7 @@ if woAm
     pLB_m2_woAm = [0.01; 0.01; 0.01; 0.00001; 0.01;    KLa_fix];
     pUB_m2_woAm = [1.0;  500;  1.0;  10.0;   10;  KLa_fix];
 
-    wsig_m2_woAm = [1; 1; 0.15; 1];
+    wsig_m2_woAm = [1; 1; 0.15; 0.0001];
     
     [TrainFit2, x0_tr2] = prep(TrainData, spec2_woAm, nCutDOT);
     obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
@@ -98,7 +98,7 @@ else
     pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
     
 
-    wsig_m2 = [1; 1; 1; 0.15; 1];
+    wsig_m2 = [1; 1; 1; 0.15; 0.0001];
 
 
     [TrainFit2, x0_tr2] = prep(TrainData, spec2, nCutDOT);

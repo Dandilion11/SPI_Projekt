@@ -36,7 +36,7 @@ fprintf('Validierung: %s\n', strjoin({ValSet.name}, ', '));
 %% 2. Kanalgewichte -------------------------------------------------------
 % Reihenfolge: [Biomasse Glucose Ammonium Phosphat Base DOT]
 % Eine 0 schaltet einen Kanal komplett ab (wurde fuer den DOT-Test genutzt).
-wsig = [1 1 1 1 1 1];
+wsig = [1 1 1 1 1 0.0001];
 
 %% 3. Parameter -----------------------------------------------------------
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};

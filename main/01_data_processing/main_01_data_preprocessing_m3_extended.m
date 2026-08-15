@@ -20,7 +20,7 @@
 clear; clc; close all;
 
 filepath    = pwd;
-datenordner = fullfile(filepath,'Daten','MessDaten_SPI1_Projekt');
+datenordner = fullfile(filepath, 'Daten','MessDaten_SPI1_Projekt');
 
 trainNames = {'03','04','06','10'};
 valNames   = {'07'};
@@ -153,7 +153,7 @@ function s = messwert(feld, name)
     a = feld.VarParam.a;  b = feld.VarParam.b;
     switch name
         case 'Base', s.var = a.*y/1000 + b/1e6;
-        case 'O2',   s.var = 100*a.*y  + 1e4*b;
+        %case 'O2',   s.var = 100*a.*y  + 1e4*b;
         otherwise,   s.var = a.*y + b;
     end
     s.var      = max(s.var, eps);
