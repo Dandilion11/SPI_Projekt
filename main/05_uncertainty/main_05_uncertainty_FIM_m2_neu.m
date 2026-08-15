@@ -62,8 +62,10 @@ kanal = { D.Biomasse.t, D.Biomasse.var, 1, 'Biomasse'; ...
           D.Ammonium.t, D.Ammonium.var, 3, 'Ammonium'; ...
           D.Base.t,     D.Base.var,     4, 'Base';     ...
           D.O2.t,       D.O2.var,       5, 'DOT'       };
+wsig_m2 = [1; 1; 1; 0.15; 0.0001];
 
 FM = zeros(np, np);
+
 for c = 1:size(kanal,1)
     tc = kanal{c,1}(:);  vc = kanal{c,2}(:);  nmc = kanal{c,4};
     [tf, idx] = ismember(tc, t_all);
@@ -75,7 +77,7 @@ for c = 1:size(kanal,1)
         XP_k    = reshape(X_ext(idx(k), nx+1:end), nx, np);
         Sy(k,:) = XP_k(kanal{c,3},:);
     end
-
+    FC = zeros(np, np);
     if strcmp(nmc,'Base')
         keep = subsample_idx(tc, dt_min);
         if nnz(keep) < 3
@@ -87,14 +89,16 @@ for c = 1:size(kanal,1)
         vd = vk(2:end) + vk(1:end-1);
         n  = size(dS,1);
         for k = 1:n
-            FM = FM + (dS(k,:).' * dS(k,:)) / vd(k); % / n;
+            FC = FC + (dS(k,:).' * dS(k,:)) / vd(k); % / n;
         end
+        FM = FM + wsig_m2(c) * (FC / n);
         fprintf('Base: %d Inkremente verwendet\n', n);
     else
         n = size(Sy,1);
         for k = 1:n
-            FM = FM + (Sy(k,:).' * Sy(k,:)) / max(vc(k),eps); % / n;
+            FC = FC + (Sy(k,:).' * Sy(k,:)) / max(vc(k),eps); % / n;
         end
+        FM = FM + wsig_m2(c) * FC / n;
     end
 end
 
