@@ -27,10 +27,11 @@
 
 clear; clc; close all;
 
-projectRoot = pwd;
+projectRoot = fileparts(mfilename('fullpath'));
+projectRoot = fullfile(projectRoot,'..', '..');
 DATEN = fullfile(projectRoot,'Daten');
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
-addpath(fullfile(projectRoot,'..','utils'),  '-begin');
+addpath(fullfile(projectRoot,'Modelle'),'-begin');
+addpath(fullfile(projectRoot,'utils'),  '-begin');
 rehash;
 
 %% 1. Eingaenge laden -----------------------------------------------------
