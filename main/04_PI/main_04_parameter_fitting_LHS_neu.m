@@ -15,7 +15,7 @@ projectRoot = fileparts(mfilename('fullpath'));
 projectRoot = fullfile(projectRoot,'..', '..');
 load(fullfile(projectRoot,'Daten','Daten_Processed','Processed_Batch_Data.mat'));
 addpath(fullfile(projectRoot,'Modelle'),'-begin');
-rehash; clear Modell1 Modell2
+rehash; clear Modell1 Modell2 Modell2_woAm
 
 kinetic = 3;      % 3 = Monod
 nCutDOT = 1;      % erste DOT-Punkte nicht fitten (Einschwingen des Sensors)
@@ -28,11 +28,13 @@ options = optimoptions('fmincon','Display','iter','Algorithm','sqp');
 % Zustandsreihenfolge, daraus wird x0 gebaut.
 spec1 = {'Biomasse',1; 'Glucose',2; 'O2',3};
 spec2 = {'Biomasse',1; 'Glucose',2; 'Ammonium',3; 'Base',4; 'O2',5};
+spec2_woAm = {'Biomasse',1; 'Glucose',2; 'Base',3; 'O2',4};
 
 % Rechte Seiten als Handles, damit beide Modelle dieselben Hilfsfunktionen
 % benutzen koennen.
 RHS1 = @(t,x,p,DS) Modell1(t,x,p,kinetic,true,DS);
 RHS2 = @(t,x,p,DS) Modell2(t,x,p,kinetic,DS);
+RHS2_woAm = @(t,x,p,DS) Modell2_woAm(t,x,p,kinetic,DS);
 
 
 %% ======================================================================
@@ -75,29 +77,57 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 %% ======================================================================
 %% MODELL 2
 %% ======================================================================
-% Parameter: [mumax, KS, YXS, Y_Bam, Y_AmX, YXO_eff, KLa, KAm]
-p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  0.6;  KLa_fix];
-pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;    KLa_fix];
-pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
+%Definieren welches Modell, ob mit oder ohne Ammonium
+woAm = false;
 
-wsig_m2 = [1; 1; 1; 0.15; 1];
+if woAm
+    % Parameter woAm: [mumax, KS, YXS, Y_Bam, YXO_eff, KLa]
+    p0_m2_woAm  = [0.3;  0.5;  0.15; 0.05;  0.6;  KLa_fix];
+    pLB_m2_woAm = [0.01; 0.01; 0.01; 0.00001; 0.01;    KLa_fix];
+    pUB_m2_woAm = [1.0;  500;  1.0;  10.0;   10;  KLa_fix];
 
-[TrainFit2, x0_tr2] = prep(TrainData, spec2, nCutDOT);
-obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2, spec2, wsig_m2);
-[p_opt_m2, fval_m2] = lhs_multistart(obj2, p0_m2, pLB_m2, pUB_m2, options, N_lhs, K_opt);
+    wsig_m2_woAm = [1; 1; 0.15; 1];
+    
+    [TrainFit2, x0_tr2] = prep(TrainData, spec2_woAm, nCutDOT);
+    obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
+    [p_opt_m2, fval_m2] = lhs_multistart(obj2, p0_m2_woAm, pLB_m2_woAm, pUB_m2_woAm, options, N_lhs, K_opt);
+else
+    % Parameter: [mumax, KS, YXS, Y_Bam, Y_AmX, YXO_eff, KLa]
+    p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  0.6;  KLa_fix];
+    pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;    KLa_fix];
+    pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
+    
+
+    wsig_m2 = [1; 1; 1; 0.15; 1];
+
+
+    [TrainFit2, x0_tr2] = prep(TrainData, spec2, nCutDOT);
+    obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2, spec2, wsig_m2);
+    [p_opt_m2, fval_m2] = lhs_multistart(obj2, p0_m2, pLB_m2, pUB_m2, options, N_lhs, K_opt);
+end
 
 fprintf('\n--- Modell2: Training RamScDef03 ---\n');
 fprintf('WLS-Fehler (Training): %.4f\n', fval_m2);
 fprintf('mu_max   = %.4f 1/h\n', p_opt_m2(1));
 fprintf('K_S      = %.4f g/L\n', p_opt_m2(2));
 fprintf('Y_XS     = %.4f g/g\n', p_opt_m2(3));
-fprintf('Y_Bam    = %.4f\n',     p_opt_m2(4));
-fprintf('Y_AmX    = %.4f\n',     p_opt_m2(5));
-fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt_m2(6), p_opt_m2(7));
 
-[ValFit2, x0_val2] = prep(ValData, spec2, nCutDOT);
-fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
+if woAm
+    fprintf('Y_BA    = %.4f\n',     p_opt_m2(4));
+    fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt_m2(5), p_opt_m2(6));
+
+    [ValFit2, x0_val2] = prep(ValData, spec2_woAm, nCutDOT);
+    fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
+        wls_error(p_opt_m2, x0_val2, ValFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm));
+else
+    fprintf('Y_Bam    = %.4f\n',     p_opt_m2(4));
+    fprintf('Y_AmX    = %.4f\n',     p_opt_m2(5));
+    fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt_m2(6), p_opt_m2(7));
+
+    [ValFit2, x0_val2] = prep(ValData, spec2, nCutDOT);
+    fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
         wls_error(p_opt_m2, x0_val2, ValFit2, RHS2, spec2, wsig_m2));
+end
 
 save(fullfile(projectRoot,'Daten','p_opt','p_opt_Modell2.mat'), 'p_opt_m2');
 
@@ -112,22 +142,37 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt_Modell2.mat'), 'p_opt_m2');
 fprintf('\n-- Modell1 Training --\n');   print_channels(spec1(:,1), c, J, n);
 [J,c,n] = wls_error(p_opt,    x0_val1, ValFit1,   RHS1, spec1, wsig_m1);
 fprintf('-- Modell1 Validierung --\n');  print_channels(spec1(:,1), c, J, n);
-[J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2, spec2, wsig_m2);
-fprintf('\n-- Modell2 Training --\n');   print_channels(spec2(:,1), c, J, n);
-[J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2, spec2, wsig_m2);
-fprintf('-- Modell2 Validierung --\n');  print_channels(spec2(:,1), c, J, n);
 
+if woAm
+    [J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
+    fprintf('\n-- Modell2 Training --\n');   print_channels(spec2_woAm(:,1), c, J, n);
+    [J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2_woAm, spec2_woAm, wsig_m2_woAm);
+    fprintf('-- Modell2 Validierung --\n');  print_channels(spec2_woAm(:,1), c, J, n);
+else
+    [J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2, spec2, wsig_m2);
+    fprintf('\n-- Modell2 Training --\n');   print_channels(spec2(:,1), c, J, n);
+    [J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2, spec2, wsig_m2);
+    fprintf('-- Modell2 Validierung --\n');  print_channels(spec2(:,1), c, J, n);
+end
 
 %% ======================================================================
 %% Plots und Abbildungen speichern
 %% ======================================================================
 ylab1 = {'c_X (g/L)','c_{Glc} (g/L)','DOT (%)'};
 ylab2 = {'c_X (g/L)','c_{Glc} (g/L)','c_{Am} (g/L)','m_B (L)','DOT (%)'};
+ylab2_woAm = {'c_X (g/L)','c_{Glc} (g/L)','m_B (L)','DOT (%)'};
 
 plot_experiment(TrainData, p_opt,    RHS1, spec1, ylab1, nCutDOT, 'Modell1 | Training RamScDef03');
 plot_experiment(ValData,   p_opt,    RHS1, spec1, ylab1, nCutDOT, 'Modell1 | Validierung RamScDef04');
-plot_experiment(TrainData, p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Training RamScDef03');
-plot_experiment(ValData,   p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Validierung RamScDef04');
+
+if woAm
+    plot_experiment(TrainData, p_opt_m2, RHS2_woAm, spec2_woAm, ylab2, nCutDOT, 'Modell2 | Training RamScDef03');
+    plot_experiment(ValData,   p_opt_m2, RHS2_woAm, spec2_woAm, ylab2, nCutDOT, 'Modell2 | Validierung RamScDef04');
+else
+    plot_experiment(TrainData, p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Training RamScDef03');
+    plot_experiment(ValData,   p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Validierung RamScDef04');
+end
+
 
 bildordner = fullfile(projectRoot,'Bilder','Batchmodelle');
 figs = findobj('Type','figure');
