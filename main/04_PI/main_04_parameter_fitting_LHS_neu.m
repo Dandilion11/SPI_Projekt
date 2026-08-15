@@ -292,7 +292,7 @@ function plot_experiment(Data, p, RHS, spec, ylabs, nCutDOT, titel)
                  'MarkerFaceColor','b','MarkerSize',4); hold on;
         plot(t_sim, X(:,spec{k,2}), 'LineWidth', 2);
         title(spec{k,1}, 'FontSize', FS); ylabel(ylabs{k}, 'FontSize', FS);
-        legend('Messung \pm \sigma','Simulation','Location','best', 'FontSize', FS); 
+        legend('Messung  ± σ','Simulation','Location','best', 'FontSize', FS); 
         set(gca, 'FontSize', FSA);
         grid on;
     end
@@ -302,27 +302,22 @@ end
 
 
 function save_fig(fig, name, ordner)
-% Speichert eine Figure hell (fuer Folien) als PNG und PDF.
+% Speichert eine Figure als SVG.
     if ~exist(ordner,'dir'), mkdir(ordner); end
     name = regexprep(strtrim(name), '[^\w\-]', '_');
     if isempty(name), name = sprintf('Figure_%d', fig.Number); end
-    ziel = fullfile(ordner, [name '.png']);
+    ziel = fullfile(ordner, [name '.svg']);
 
-    try                                   % ab R2025a: helles Theme
-        set(fig, 'Theme', 'light');  drawnow;
-    catch                                 % sonst von Hand umfaerben
-        set(fig, 'Color', 'w', 'InvertHardcopy', 'off');
-        for a = findall(fig,'Type','axes').'
-            set(a, 'Color','w', 'XColor','k', 'YColor','k', ...
-                   'GridColor',[0.15 0.15 0.15], 'GridAlpha',0.15);
-            set([a.Title a.XLabel a.YLabel], 'Color', 'k');
-        end
-        set(findall(fig,'Type','legend'), 'TextColor','k', 'Color','w');
-        set(findall(fig,'Type','text'), 'Color', 'k');
-        drawnow;
+    set(fig, 'Color', 'w', 'InvertHardcopy', 'off');
+    drawnow;
+
+    % SVG kann exportgraphics erst ab R2023b -> sonst ueber print
+    try
+        exportgraphics(fig, ziel, 'ContentType', 'vector');
+    catch
+        set(fig, 'PaperPositionMode', 'auto');
+        print(fig, ziel, '-dsvg');
     end
 
-    exportgraphics(fig, ziel, 'Resolution', 300);
-    exportgraphics(fig, strrep(ziel,'.png','.pdf'), 'ContentType','vector');
     fprintf('  gespeichert: %s\n', ziel);
 end
