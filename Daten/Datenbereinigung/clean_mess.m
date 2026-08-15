@@ -66,8 +66,12 @@ switch name
         [tO, yO] = common_range(md.O2.BatchAge, md.O2.Wert);
         bad = (tO >= 18.5 & tO <= 23.6) | (yO > 100);
         md.O2.Wert(bad) = NaN;
+        md.O2.Wert(1) = NaN;
 
-    case {'04','06','07', '10'}
+    case '04'
+        md.O2.Wert(1) = NaN;
+        
+    case {'06','07', '10'}
         % Keine Befunde nach den Kriterien (a)-(d).
 
     otherwise

@@ -35,7 +35,6 @@ nx = 7;   np = 10;
 namen = {'mumax','KS','YXS','YAmX','YPhX','YB_Am','KLa','YXO','KAm','KPh'};
 iFree = [1 2 3 4 5 6 8];  % KLa, KAm, KPh waren im Fit fixiert
 nf    = numel(iFree);
-dt_min = 1.0;                  % h, Ausduennung der Base (wie im Fit)
 
 fprintf('Frei:    %s\n', strjoin(namen(iFree), ', '));
 fprintf('Fixiert: %s\n', strjoin(namen(setdiff(1:np,iFree)), ', '));
@@ -45,7 +44,7 @@ FM = zeros(np, np);
 fprintf('\n--- Beitrag je Experiment ---\n');
 for k = 1:numel(TrainSet)
     D  = TrainSet(k);
-    Fk = fim_one(D, p_opt, max(D.O2.y), nx, np, dt_min);
+    Fk = fim_one(D, p_opt, max(D.O2.y), nx, np, S.wsig);
     FM = FM + Fk;
     fprintf('%-12s  rank = %d | trace = %.3e\n', ...
             D.name, rank(Fk(iFree,iFree)), trace(Fk(iFree,iFree)));
@@ -127,12 +126,7 @@ build_heatmap(Corr, namen(iFree))
 %  Hilfsfunktionen
 %% ======================================================================
 
-function F = fim_one(D, p, DOTstern, nx, np, dt_min)
-% FIM-Beitrag EINES Experiments. Jeder Kanal wird auf seinem eigenen
-% Zeitraster ausgewertet und durch seine Punktzahl geteilt -- das
-% entspricht der Mittelung im Guetefunktional.
-
-    % {Messreihe, Index in der Messgleichung}
+function F = fim_one(D, p, DOTstern, nx, np, wsig)
     M  = { D.Biomasse, 1; D.Glucose, 2; D.Ammonium, 3; ...
            D.Phosphat, 4; D.Base,    5; D.O2,       6 };
     nm = {'Biomasse','Glucose','Ammonium','Phosphat','Base','DOT'};
@@ -146,40 +140,26 @@ function F = fim_one(D, p, DOTstern, nx, np, dt_min)
 
     F = zeros(np, np);
     for i = 1:6
+        if wsig(i) == 0, continue; end
         mess = M{i,1};
         [tf, iT] = ismember(mess.t(:), t_all);
         if any(~tf), error('Messzeitpunkt fuer %s nicht gefunden.', nm{i}); end
 
-        % Ausgangssensitivitaet dy_i/dtheta an jedem Messpunkt
         Sy = zeros(numel(iT), np);
         for k = 1:numel(iT)
             xk   = X_ext(iT(k), 1:nx).';
             XP_k = reshape(X_ext(iT(k), nx+1:end), nx, np);
-            dhdx = Modell3_dmgldx(xk);          % Massen -> Konzentrationen
-            Sy(k,:) = dhdx(M{i,2},:) * XP_k;    % Kettenregel
+            dhdx = Modell3_dmgldx(xk);
+            Sy(k,:) = dhdx(M{i,2},:) * XP_k;
         end
 
-        if strcmp(nm{i},'Base')
-            % Inkremente statt Absolutwerte (wie im Guetefunktional)
-            keep = subsample_idx(mess.t, dt_min);
-            if nnz(keep) < 3, continue; end
-            dS = diff(Sy(keep,:), 1, 1);
-            vk = max(mess.var(keep), eps);
-            vd = vk(2:end) + vk(1:end-1);
-            n  = size(dS,1);
-            for k = 1:n
-                F = F + (dS(k,:).' * dS(k,:)) / vd(k); % / n;
-            end
-        else
-            v = max(mess.var(:), eps);
-            n = size(Sy,1);
-            for k = 1:n
-                F = F + (Sy(k,:).' * Sy(k,:)) / v(k);% / n;
-            end
+        v = max(mess.var(:), eps);
+        n = size(Sy,1);
+        for k = 1:n
+            F = F + (wsig(i)/n) * (Sy(k,:).' * Sy(k,:)) / v(k);
         end
     end
 end
-
 
 function X_ext = sim_xp(t, x0, u, p, DOTstern, Probe, nx, np)
 % Integriert Zustaende UND Sensitivitaeten, segmentweise zwischen den
@@ -234,15 +214,6 @@ function xe = probe_ext(xe, Vp, nx, np)
     end
 
     xe = [reshape(probe_m3(x,Vp), [], 1); reshape(Jg*XP, [], 1)];
-end
-
-
-function keep = subsample_idx(t, dt_min)
-% Waehlt Punkte mit mindestens dt_min Abstand (erster Punkt immer dabei).
-    keep = false(numel(t),1);  last = -inf;
-    for i = 1:numel(t)
-        if t(i) - last >= dt_min, keep(i) = true;  last = t(i); end
-    end
 end
 
 

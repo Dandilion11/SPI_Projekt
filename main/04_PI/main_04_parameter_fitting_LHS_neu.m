@@ -5,9 +5,11 @@
 %
 % Kernentscheidungen (Begruendung jeweils am Block):
 %   - Mittelung pro Messkanal statt Aufsummieren
-%   - Base wird in Modell 2 als Inkrement bewertet
 %   - KLa ist fixiert -> gefittet wird YXO_eff = KLa*YXO
 %   - Multistart per LHS
+%
+% Die Datenbereinigung (u.a. das Entfernen der ersten DOT-Punkte vor dem
+% Einschwingen der Sonde) liegt vollstaendig im Preprocessing.
 
 clear; clc; close all;
 
@@ -18,7 +20,6 @@ addpath(fullfile(projectRoot,'Modelle'),'-begin');
 rehash; clear Modell1 Modell2 Modell2_woAm
 
 kinetic = 3;      % 3 = Monod
-nCutDOT = 1;      % erste DOT-Punkte nicht fitten (Einschwingen des Sensors)
 
 N_lhs = 100;      % billige Screening-Punkte
 K_opt = 3;        % davon die besten -> teurer fmincon-Start
@@ -54,8 +55,8 @@ pUB = [1.0;  500;  1.0;  10;  KLa_fix];
 
 wsig_m1 = [1; 1; 0.0001];
 
-[TrainFit1, x0_tr1] = prep(TrainData, spec1, nCutDOT);
-obj1 = @(p) wls_error(p, x0_tr1, TrainFit1, RHS1, spec1, wsig_m1);
+x0_tr1 = build_x0(TrainData, spec1);
+obj1 = @(p) wls_error(p, x0_tr1, TrainData, RHS1, spec1, wsig_m1);
 [p_opt, fval] = lhs_multistart(obj1, p0, pLB, pUB, options, N_lhs, K_opt);
 
 fprintf('\n--- Modell1: Training RamScDef03 ---\n');
@@ -67,9 +68,9 @@ fprintf('Y_XS     = %.4f g/g\n', p_opt(3));
 fprintf('Y_XO     = %.4f g/g  (bei KLa = %.0f 1/h; identifiziert ist KLa*Y_XO = %.1f 1/h)\n', ...
     p_opt(4), p_opt(5), p_opt(4)*p_opt(5));
 
-[ValFit1, x0_val1] = prep(ValData, spec1, nCutDOT);
+x0_val1 = build_x0(ValData, spec1);
 fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
-        wls_error(p_opt, x0_val1, ValFit1, RHS1, spec1, wsig_m1));
+        wls_error(p_opt, x0_val1, ValData, RHS1, spec1, wsig_m1));
 
 save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 
@@ -86,23 +87,23 @@ if woAm
     pLB_m2_woAm = [0.01; 0.01; 0.01; 0.00001; 0.01;    KLa_fix];
     pUB_m2_woAm = [1.0;  500;  1.0;  10.0;   10;  KLa_fix];
 
-    wsig_m2_woAm = [1; 1; 0.15; 0.0001];
-    
-    [TrainFit2, x0_tr2] = prep(TrainData, spec2_woAm, nCutDOT);
-    obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
+    wsig_m2_woAm = [1; 1; 0.01; 0.0001];
+
+    x0_tr2 = build_x0(TrainData, spec2_woAm);
+    obj2 = @(p) wls_error(p, x0_tr2, TrainData, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
     [p_opt_m2, fval_m2] = lhs_multistart(obj2, p0_m2_woAm, pLB_m2_woAm, pUB_m2_woAm, options, N_lhs, K_opt);
 else
     % Parameter: [mumax, KS, YXS, Y_Bam, Y_AmX, YXO_eff, KLa]
     p0_m2  = [0.3;  0.5;  0.15; 1.0;  0.05;  0.6;  KLa_fix];
     pLB_m2 = [0.01; 0.01; 0.01; 0.01; 0.001; 0.01;    KLa_fix];
     pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
-    
-
-    wsig_m2 = [1; 1; 1; 0.15; 0.0001];
 
 
-    [TrainFit2, x0_tr2] = prep(TrainData, spec2, nCutDOT);
-    obj2 = @(p) wls_error(p, x0_tr2, TrainFit2, RHS2, spec2, wsig_m2);
+    wsig_m2 = [1; 1; 1; 0.01; 0.0001];
+
+
+    x0_tr2 = build_x0(TrainData, spec2);
+    obj2 = @(p) wls_error(p, x0_tr2, TrainData, RHS2, spec2, wsig_m2);
     [p_opt_m2, fval_m2] = lhs_multistart(obj2, p0_m2, pLB_m2, pUB_m2, options, N_lhs, K_opt);
 end
 
@@ -116,17 +117,17 @@ if woAm
     fprintf('Y_BA    = %.4f\n',     p_opt_m2(4));
     fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt_m2(5), p_opt_m2(6));
 
-    [ValFit2, x0_val2] = prep(ValData, spec2_woAm, nCutDOT);
+    x0_val2 = build_x0(ValData, spec2_woAm);
     fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
-        wls_error(p_opt_m2, x0_val2, ValFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm));
+        wls_error(p_opt_m2, x0_val2, ValData, RHS2_woAm, spec2_woAm, wsig_m2_woAm));
 else
     fprintf('Y_Bam    = %.4f\n',     p_opt_m2(4));
     fprintf('Y_AmX    = %.4f\n',     p_opt_m2(5));
     fprintf('Y_XO_eff = %.4f   (= KLa*YXO, KLa fixiert auf %.1f)\n', p_opt_m2(6), p_opt_m2(7));
 
-    [ValFit2, x0_val2] = prep(ValData, spec2, nCutDOT);
+    x0_val2 = build_x0(ValData, spec2);
     fprintf('WLS-Fehler (Validierung RamScDef04): %.4f\n', ...
-        wls_error(p_opt_m2, x0_val2, ValFit2, RHS2, spec2, wsig_m2));
+        wls_error(p_opt_m2, x0_val2, ValData, RHS2, spec2, wsig_m2));
 end
 
 save(fullfile(projectRoot,'Daten','p_opt','p_opt_Modell2.mat'), 'p_opt_m2');
@@ -138,20 +139,20 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt_Modell2.mat'), 'p_opt_m2');
 % Zeigt, welcher Kanal das Guetefunktional treibt. J/nch ist der mittlere
 % quadrierte Residuenwert pro Kanal -- bei korrektem Modell und korrekter
 % Varianz waere er ~1.
-[J,c,n] = wls_error(p_opt,    x0_tr1,  TrainFit1, RHS1, spec1, wsig_m1);
+[J,c,n] = wls_error(p_opt,    x0_tr1,  TrainData, RHS1, spec1, wsig_m1);
 fprintf('\n-- Modell1 Training --\n');   print_channels(spec1(:,1), c, J, n);
-[J,c,n] = wls_error(p_opt,    x0_val1, ValFit1,   RHS1, spec1, wsig_m1);
+[J,c,n] = wls_error(p_opt,    x0_val1, ValData,   RHS1, spec1, wsig_m1);
 fprintf('-- Modell1 Validierung --\n');  print_channels(spec1(:,1), c, J, n);
 
 if woAm
-    [J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
+    [J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainData, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
     fprintf('\n-- Modell2 Training --\n');   print_channels(spec2_woAm(:,1), c, J, n);
-    [J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2_woAm, spec2_woAm, wsig_m2_woAm);
+    [J,c,n] = wls_error(p_opt_m2, x0_val2, ValData,   RHS2_woAm, spec2_woAm, wsig_m2_woAm);
     fprintf('-- Modell2 Validierung --\n');  print_channels(spec2_woAm(:,1), c, J, n);
 else
-    [J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainFit2, RHS2, spec2, wsig_m2);
+    [J,c,n] = wls_error(p_opt_m2, x0_tr2,  TrainData, RHS2, spec2, wsig_m2);
     fprintf('\n-- Modell2 Training --\n');   print_channels(spec2(:,1), c, J, n);
-    [J,c,n] = wls_error(p_opt_m2, x0_val2, ValFit2,   RHS2, spec2, wsig_m2);
+    [J,c,n] = wls_error(p_opt_m2, x0_val2, ValData,   RHS2, spec2, wsig_m2);
     fprintf('-- Modell2 Validierung --\n');  print_channels(spec2(:,1), c, J, n);
 end
 
@@ -162,15 +163,15 @@ ylab1 = {'c_X (g/L)','c_{Glc} (g/L)','DOT (%)'};
 ylab2 = {'c_X (g/L)','c_{Glc} (g/L)','c_{Am} (g/L)','m_B (L)','DOT (%)'};
 ylab2_woAm = {'c_X (g/L)','c_{Glc} (g/L)','m_B (L)','DOT (%)'};
 
-plot_experiment(TrainData, p_opt,    RHS1, spec1, ylab1, nCutDOT, 'Modell1 | Training RamScDef03');
-plot_experiment(ValData,   p_opt,    RHS1, spec1, ylab1, nCutDOT, 'Modell1 | Validierung RamScDef04');
+plot_experiment(TrainData, p_opt,    RHS1, spec1, ylab1, 'Modell1 | Training RamScDef03');
+plot_experiment(ValData,   p_opt,    RHS1, spec1, ylab1, 'Modell1 | Validierung RamScDef04');
 
 if woAm
-    plot_experiment(TrainData, p_opt_m2, RHS2_woAm, spec2_woAm, ylab2_woAm, nCutDOT, 'Modell2 ohne Ammonium | Training RamScDef03');
-    plot_experiment(ValData,   p_opt_m2, RHS2_woAm, spec2_woAm, ylab2_woAm, nCutDOT, 'Modell2 ohne Ammonium | Validierung RamScDef04');
+    plot_experiment(TrainData, p_opt_m2, RHS2_woAm, spec2_woAm, ylab2_woAm, 'Modell2 ohne Ammonium | Training RamScDef03');
+    plot_experiment(ValData,   p_opt_m2, RHS2_woAm, spec2_woAm, ylab2_woAm, 'Modell2 ohne Ammonium | Validierung RamScDef04');
 else
-    plot_experiment(TrainData, p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Training RamScDef03');
-    plot_experiment(ValData,   p_opt_m2, RHS2, spec2, ylab2, nCutDOT, 'Modell2 | Validierung RamScDef04');
+    plot_experiment(TrainData, p_opt_m2, RHS2, spec2, ylab2, 'Modell2 | Training RamScDef03');
+    plot_experiment(ValData,   p_opt_m2, RHS2, spec2, ylab2, 'Modell2 | Validierung RamScDef04');
 end
 
 
@@ -186,16 +187,9 @@ end
 %  Hilfsfunktionen
 %% ======================================================================
 
-function [D, x0] = prep(Data, spec, nCutDOT)
-% Schneidet die ersten DOT-Punkte weg und baut x0 aus den ersten
-% Messwerten. x0(DOT) muss mitwandern, sonst startet die Simulation
-% woanders als die verbleibenden Daten.
-    D = Data;
-    if nCutDOT >= 1 && numel(D.O2.t) > nCutDOT
-        k = (nCutDOT+1):numel(D.O2.t);
-        D.O2.t = D.O2.t(k);  D.O2.y = D.O2.y(k);  D.O2.var = D.O2.var(k);
-    end
-    x0 = cellfun(@(f) D.(f).y(1), spec(:,1));
+function x0 = build_x0(Data, spec)
+% Startwerte aus dem jeweils ersten Messwert je Kanal.
+    x0 = cellfun(@(f) Data.(f).y(1), spec(:,1));
 end
 
 
@@ -243,12 +237,6 @@ function [J, contrib, nch] = wls_error(p, x0, D, RHS, spec, wsig)
 %               Punkten das Funktional dominieren, waehrend Biomasse nur
 %               ~8 Punkte hat. Dadurch ist J/nch der mittlere quadrierte
 %               Residuenwert pro Kanal.
-%
-%   Base ist ein KUMULATIVES Integral: benachbarte Punkte teilen ihre
-%   Integrationsgeschichte, ihre Fehler sind also nicht unabhaengig, und
-%   sigma beschreibt nur das Rauschen einer einzelnen Zugabe. Bewertet
-%   werden deshalb die Inkremente y_k - y_{k-1} -- genau die Groesse, die
-%   Y_Bam parametrisiert.
 
     nK       = size(spec,1);
     contrib  = nan(1,nK);
@@ -294,13 +282,13 @@ function print_channels(namen, contrib, J, nch)
 end
 
 
-function plot_experiment(Data, p, RHS, spec, ylabs, nCutDOT, titel)
+function plot_experiment(Data, p, RHS, spec, ylabs, titel)
 % Simulation auf feinem Zeitraster, Messpunkte mit Fehlerbalken darueber.
     FS = 14;  % Schriftgroesse fuer Labels und Titel
     FSA = 14; % Schriftgroesse fuer Achsen-Ticks
 
-    [D, x0]  = prep(Data, spec, nCutDOT);
-    DOTstern = max(D.O2.y);
+    x0       = build_x0(Data, spec);
+    DOTstern = max(Data.O2.y);
 
     t_end = max(cellfun(@(f) max(Data.(f).t), spec(:,1))) + 1;
     t_sim = linspace(0, t_end, 300);
@@ -316,7 +304,7 @@ function plot_experiment(Data, p, RHS, spec, ylabs, nCutDOT, titel)
                  'MarkerFaceColor','b','MarkerSize',4); hold on;
         plot(t_sim, X(:,spec{k,2}), 'LineWidth', 2);
         title(spec{k,1}, 'FontSize', FS); ylabel(ylabs{k}, 'FontSize', FS);
-        legend('Messung  ± σ','Simulation','Location','best', 'FontSize', FS); 
+        legend('Messung  ± σ','Simulation','Location','best', 'FontSize', FS);
         set(gca, 'FontSize', FSA);
         grid on;
     end

@@ -65,16 +65,19 @@ kanal = { D.Biomasse.t, D.Biomasse.var, 1, 'Biomasse'; ...
           D.O2.t,       D.O2.var,       3, 'DOT'      };
 
 FM = zeros(np, np);
+wsig_m1 = [1; 1; 0.0001];
 for c = 1:size(kanal,1)
     [tf, idx] = ismember(kanal{c,1}(:), t_all);
     if any(~tf), error('Messzeit fuer %s nicht gefunden.', kanal{c,4}); end
     vc = kanal{c,2}(:);
     n  = numel(idx);
+    Fc = zeros(np, np); 
     for k = 1:n
         XP_k = reshape(X_ext(idx(k), nx+1:end), nx, np);
         s    = XP_k(kanal{c,3},:).';                 % dy/dtheta  (np x 1)
-        FM   = FM + (s*s.') / max(vc(k),eps); % / n;    % /n = Mittelung
+        Fc   = Fc + (s*s.') / max(vc(k),eps);
     end
+    FM = FM + wsig_m1(c) * (Fc / n);
 end
 
 %% 4. Auf die freien Parameter einschraenken -----------------------------

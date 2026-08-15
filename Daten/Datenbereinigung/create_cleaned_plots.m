@@ -34,6 +34,7 @@ fprintf('Abbildungen in: %s\n', bildordner);
 
 
 %% ======================================================================
+%{
 function save_fig(fig, name, ordner)
 % Speichert eine Figure hell (fuer Folien) als PNG und PDF.
     if ~exist(ordner,'dir'), mkdir(ordner); end
@@ -55,5 +56,29 @@ function save_fig(fig, name, ordner)
 
     exportgraphics(fig, ziel, 'Resolution', 300);
     exportgraphics(fig, strrep(ziel,'.png','.pdf'), 'ContentType','vector');
+    fprintf('  gespeichert: %s\n', ziel);
+end
+%}
+
+
+
+function save_fig(fig, name, ordner)
+% Speichert eine Figure als SVG.
+    if ~exist(ordner,'dir'), mkdir(ordner); end
+    name = regexprep(strtrim(name), '[^\w\-]', '_');
+    if isempty(name), name = sprintf('Figure_%d', fig.Number); end
+    ziel = fullfile(ordner, [name '.svg']);
+
+    set(fig, 'Color', 'w', 'InvertHardcopy', 'off');
+    drawnow;
+
+    % SVG kann exportgraphics erst ab R2023b -> sonst ueber print
+    try
+        exportgraphics(fig, ziel, 'ContentType', 'vector');
+    catch
+        set(fig, 'PaperPositionMode', 'auto');
+        print(fig, ziel, '-dsvg');
+    end
+
     fprintf('  gespeichert: %s\n', ziel);
 end

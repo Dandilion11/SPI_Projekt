@@ -24,6 +24,10 @@ datenordner = fullfile(scriptDir, '..', '..', 'Daten', 'MessDaten_SPI1_Projekt')
 exp_03 = load(fullfile(datenordner,'Mess_RamScDef03.mat')).Mess;
 exp_04 = load(fullfile(datenordner,'Mess_RamScDef04.mat')).Mess;
 
+% Gleiche Bereinigung wie im Modell-3-Preprocessing
+exp_03 = clean_mess(exp_03, '03');
+exp_04 = clean_mess(exp_04, '04');
+
 %% Aufbereiten ------------------------------------------------------------
 % Kanalname im Ergebnis -> Feldname im Mess-Struct
 kanaele = {'Biomasse','Biomasse'; 'Glucose','Glucose'; 'O2','O2'; ...
