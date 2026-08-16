@@ -192,7 +192,10 @@ save(fullfile(DATEN,'FIM','OVP_Modell3.mat'), ...
      'Erg','K_alt','K_ref','relStd_alt','relStd_ref','VP','iFree','z_best');
 
 %% 8. Abbildungen ---------------------------------------------------------
-FS = 16;  FSA = 12;
+PLOT_FONT_SIZE = 12;      % Adjust this parameter to scale all plot labels and axes
+FS = PLOT_FONT_SIZE + 4;  % Base size + 4 for labels and titles
+FSA = PLOT_FONT_SIZE;     % Base size for axes tick marks
+
 V = X(:,1);
 
 figure('Name','OVP Modell 3 -- optimale Feeds','Position',[100 40 950 800]);
@@ -236,8 +239,8 @@ yyaxis left;  plot(t_sim, V, 'LineWidth', 2);      ylabel('V [L]','FontSize',FS)
 yyaxis right; plot(t_sim, X(:,7), 'LineWidth', 2); ylabel('DOT [%]','FontSize',FS);
 xlabel('Zeit [h]','FontSize',FS); set(gca,'FontSize',FSA); grid on;
 
-build_heatmap(Corr_alt, namen(iFree), 'Korrelation vor OVP');
-build_heatmap(Corr_neu, namen(iFree), sprintf('Korrelation nach OVP (%s)', kritWahl));
+build_heatmap(Corr_alt, namen(iFree), 'Korrelation vor OVP', FSA);
+build_heatmap(Corr_neu, namen(iFree), sprintf('Korrelation nach OVP (%s)', kritWahl), FSA);
 
 figure('Name','Feedprofile A vs D','Position',[100 100 900 600]);
 for ic = 1:numel(Erg)
@@ -473,7 +476,7 @@ function print_worst_dir(Fn, nam)
 end
 
 
-function build_heatmap(corr, params, titel)
+function build_heatmap(corr, params, titel, font_size)
 n = 256;
 blue = [0.0000 0.4470 0.7410];  white = [1 1 1];  red = [0.8500 0.3250 0.0980];
 cmap = [ [linspace(blue(1),white(1),n/2)' linspace(blue(2),white(2),n/2)' ...
@@ -486,7 +489,7 @@ h = heatmap(params, params, corr);
 h.Title = titel;
 h.XLabel = 'Parameter';   h.YLabel = 'Parameter';
 h.ColorLimits = [-1 1];   h.Colormap = cmap;
-h.CellLabelFormat = '%.2f';   h.FontSize = 11;
+h.CellLabelFormat = '%.2f';   h.FontSize = font_size;
 end
 
 

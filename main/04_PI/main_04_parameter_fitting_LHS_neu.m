@@ -43,11 +43,6 @@ RHS2_woAm = @(t,x,p,DS) Modell2_woAm(t,x,p,kinetic,DS);
 %% ======================================================================
 % Parameter: [mumax, KS, YXS, YXO_eff, KLa]
 %
-% KLa wird NICHT gefittet, sondern auf 1 gesetzt. DOT ist quasistationaer
-% (tau = 1/KLa im Sekundenbereich, Abtastung in Minuten), deshalb bestimmt
-% das DOT-Signal nur das PRODUKT KLa*YXO. KLa := 1 ist also keine Annahme,
-% sondern eine Reparametrisierung: gefittet wird YXO_eff = KLa*YXO.
-% pLB == pUB haelt den Wert in fmincon fest.
 KLa_fix = 500; % fixiert da nur produkt aus KS und YXO identifizierbar ist. Konstante rpm heißt kla sollte auch mehr oder weniger konstant sein
 p0  = [0.3;  0.5;  0.15; 0.6;  KLa_fix];
 pLB = [0.01; 0.01; 0.01; 0.01;    KLa_fix];
