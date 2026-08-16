@@ -53,7 +53,7 @@ p0  = [0.3;  0.5;  0.15; 0.6;  KLa_fix];
 pLB = [0.01; 0.01; 0.01; 0.01;    KLa_fix];
 pUB = [1.0;  500;  1.0;  10;  KLa_fix];
 
-wsig_m1 = [1; 1; 0.0001];
+wsig_m1 = [1; 1; 0.001];
 
 x0_tr1 = build_x0(TrainData, spec1);
 obj1 = @(p) wls_error(p, x0_tr1, TrainData, RHS1, spec1, wsig_m1);
@@ -79,7 +79,7 @@ save(fullfile(projectRoot,'Daten','p_opt','p_opt.mat'), 'p_opt');
 %% MODELL 2
 %% ======================================================================
 %Definieren welches Modell, ob mit oder ohne Ammonium
-woAm = true;
+woAm = false;
 
 if woAm
     % Parameter woAm: [mumax, KS, YXS, Y_Bam, YXO_eff, KLa]
@@ -87,7 +87,7 @@ if woAm
     pLB_m2_woAm = [0.01; 0.01; 0.01; 0.00001; 0.01;    KLa_fix];
     pUB_m2_woAm = [1.0;  500;  1.0;  10.0;   10;  KLa_fix];
 
-    wsig_m2_woAm = [1; 1; 0.01; 0.0001];
+    wsig_m2_woAm = [1; 1; 0.01; 0.001];
 
     x0_tr2 = build_x0(TrainData, spec2_woAm);
     obj2 = @(p) wls_error(p, x0_tr2, TrainData, RHS2_woAm, spec2_woAm, wsig_m2_woAm);
@@ -99,7 +99,7 @@ else
     pUB_m2 = [1.0;  500;  1.0;  10;   1.0;   10;  KLa_fix];
 
 
-    wsig_m2 = [1; 1; 1; 0.01; 0.0001];
+    wsig_m2 = [1; 1; 1; 0.01; 0.001];
 
 
     x0_tr2 = build_x0(TrainData, spec2);

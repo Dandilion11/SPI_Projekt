@@ -13,10 +13,11 @@ clear; clc; close all;
 warning('off','MATLAB:ode15s:IntegrationTolNotMet');
 
 %% 1. Daten laden ---------------------------------------------------------
-projectRoot = pwd;
+projectRoot = fileparts(mfilename('fullpath'));
+projectRoot = fullfile(projectRoot,'..', '..');
 load(fullfile(projectRoot,'Daten/Daten_Processed/Processed_FedBatch_Modell3_MultiExp.mat'));
-addpath(fullfile(projectRoot,'..','Modelle'),'-begin');
-addpath(fullfile(projectRoot,'..','utils'),'-begin');
+addpath(fullfile(projectRoot,'Modelle'),'-begin');
+addpath(fullfile(projectRoot,'utils'),'-begin');
 rehash;
 
 SIMFUN = @(tt,xx,uu,pp,dd,PP) sim_m3_sample_10p(tt,xx,uu,pp,dd,PP,'fast');
